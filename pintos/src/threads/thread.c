@@ -330,23 +330,43 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
-/* Yields the CPU.  The current thread is not put to sleep and
-   may be scheduled again immediately at the scheduler's whim. */
-void
-thread_yield (void)
+static bool
+priority_more (const struct list_elem *a, const struct list_elem *b,
+               void *aux UNUSED)
 {
-  struct thread *cur = thread_current ();
+  const struct thread *thread_a = list_entry (a, struct thread, elem);
+  const struct thread *thread_b = list_entry (b, struct thread, elem);
+
+  return thread_a->priority > thread_b->priority;
+}
+/* ULTRA: Yields the CPU in an ULTRA manner.  The thread is not put to sleep and
+   may be scheduled again immediately at the scheduler's whim. */
+static void
+__thread_yield_ultra (struct thread *cur)
+{
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, priority_more, NULL);
+    //TODO remove commented code
+    // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
+
+/* Yields the CPU by calling the higher powers (__thread_yield_ultra).
+   The current thread is not put to sleep and may be scheduled again
+   immediately at the scheduler's whim. */
+void thread_yield(void)
+{
+  struct thread *cur = thread_current ();
+  __thread_yield_ultra(cur);
+}
+
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
@@ -369,7 +389,58 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_current ()->priority = new_priority;
+  thread_given_set_priority(thread_current() , new_priority , false);
+}
+
+
+void
+thread_given_set_priority (struct thread *cur, int new_priority,
+                           bool is_donation)
+{
+  enum intr_level old_level;
+  old_level = intr_disable();
+
+  ASSERT (new_priority >= PRI_MIN);
+  ASSERT (new_priority <= PRI_MAX);
+  ASSERT (is_thread (cur));
+
+   /* if this operation is a not donatation
+    *   if the thread has been donated and the new priority is less 
+    *   or equal to the donated priority, we should delay the process
+    *   by preserve it in priority_original.
+    * otherwise, just do the donation, set priority to the donated
+    * priority, and mark the thread as a donated one.
+    */ 
+   if (!is_donation) 
+     {
+       if (cur->is_donated && new_priority <= cur->priority) 
+          cur->base_priority = new_priority;
+       else
+          cur->priority = cur->base_priority = new_priority;
+     }
+   else 
+     {
+	      cur->priority = new_priority;
+        cur->is_donated = true;
+     }
+
+
+  /* If the current thread's status is THREAD_READY, then just reinsert it
+   * to the ready_list in order to keep the ready_list in order; if its status
+   * is THREAD_RUNNING, then compare its priority with the largest one's
+   * priority in the ready_list: if the current one's is smaller, then yields
+   * the CPU.
+   */
+  if (cur->status == THREAD_READY)
+    {
+      list_remove (&cur->elem);
+      list_insert_ordered (&ready_list, &cur->elem, priority_more, NULL);
+    }
+  else if (cur->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > cur->priority)
+    {
+      __thread_yield_ultra (cur);
+    }
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */

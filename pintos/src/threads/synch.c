@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+static bool lock_priority_more (const struct list_elem *, const struct list_elem *, void *);
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -196,9 +198,55 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+
+  enum intr_level old_level = intr_disable();
+  struct thread *cur=thread_current();
+  int iterated=0;
+  cur->required_lock=lock;
+  
+  while(iterated++ < LOCK_LEVEL){
+    if (!cur->required_lock->holder)
+      break;
+
+    if (cur->required_lock->priority < cur->priority){
+        
+        thread_given_set_priority(cur->required_lock->holder, cur->priority, true);
+        cur->required_lock->priority=cur->priority;
+
+        // nested donation
+        if(cur->required_lock->holder->required_lock){
+          cur = cur->required_lock->holder;
+          continue;
+        }
+    }
+    break;
+  }
+  
   sema_down (&lock->semaphore);
+
+  cur=thread_current ();
+  cur->required_lock = NULL;
+  
+  /* Add this lock to the thread's lock holding list */
+  list_insert_ordered (&cur->acquired_locks, &lock->elem_lock,
+                           lock_priority_more, NULL);
+    
   lock->holder = thread_current ();
+  intr_set_level(old_level);
 }
+
+static bool
+lock_priority_more (const struct list_elem *a, const struct list_elem *b,
+                    void *aux UNUSED)
+{
+  const struct lock *thread_a = list_entry (a, struct lock, elem_lock);
+  const struct lock *thread_b = list_entry (b, struct lock, elem_lock);
+
+  return thread_a->priority >= thread_b->priority;
+}
+
+
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
