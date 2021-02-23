@@ -68,7 +68,7 @@ sema_down (struct semaphore *sema) /*(0 w 0)*/
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  while (sema->value == 0)
+  while (!sema->value)
     {
       list_insert_ordered (&sema->waiters, &thread_current ()->elem, thread_priority_more, NULL);
       thread_block ();
@@ -112,7 +112,7 @@ sema_up (struct semaphore *sema) /*(0 w 0)*/
 {
   enum intr_level old_level;
 
-  ASSERT (sema != NULL);
+  ASSERT (sema);
   old_level = intr_disable ();
   struct thread* waited_thread = NULL;
   struct thread *cur = thread_current ();
@@ -125,7 +125,7 @@ sema_up (struct semaphore *sema) /*(0 w 0)*/
   sema->value++;
   
   
-  if (waited_thread  && cur->priority < waited_thread->priority)
+  if (waited_thread && cur->priority < waited_thread->priority)
     thread_yield_ultra(cur);
   
   intr_set_level (old_level);
@@ -187,7 +187,7 @@ sema_test_helper (void *sema_)
 void
 lock_init (struct lock *lock) /*(0 w 0)*/
 {
-  ASSERT (lock != NULL);
+  ASSERT (lock);
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
@@ -206,7 +206,7 @@ lock_init (struct lock *lock) /*(0 w 0)*/
 void
 lock_acquire (struct lock *lock) /*(0 w 0)*/
 {
-  ASSERT (lock != NULL);
+  ASSERT (lock);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
@@ -220,18 +220,17 @@ lock_acquire (struct lock *lock) /*(0 w 0)*/
     if (!cur->required_lock->holder)
       break;
 
-    if (cur->required_lock->priority < cur->priority){
+    if (cur->required_lock->priority >= cur->priority)
+      break;
         
-        thread_given_set_priority(cur->required_lock->holder, cur->priority, true);
-        cur->required_lock->priority=cur->priority;
+    thread_given_set_priority(cur->required_lock->holder, cur->priority, true);
+    cur->required_lock->priority=cur->priority;
 
-        // nested donation
-        if(cur->required_lock->holder->required_lock){
-          cur = cur->required_lock->holder;
-          continue;
-        }
-    }
-    break;
+    if(!cur->required_lock->holder->required_lock)
+      break;
+      
+    // nested donation
+    cur = cur->required_lock->holder;
   }
   
   sema_down (&lock->semaphore);
@@ -248,8 +247,7 @@ lock_acquire (struct lock *lock) /*(0 w 0)*/
 }
 
 static bool
-lock_priority_more (const struct list_elem *a, const struct list_elem *b,
-                    void *aux UNUSED)
+lock_priority_more (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) /*(0 w 0)*/
 {
   const struct lock *thread_a = list_entry (a, struct lock, elem_lock);
   const struct lock *thread_b = list_entry (b, struct lock, elem_lock);
@@ -288,7 +286,7 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) /*(0 w 0)*/
 {
-  ASSERT (lock != NULL);
+  ASSERT (lock);
   ASSERT (lock_held_by_current_thread (lock));
   
   struct thread *cur = thread_current ();
@@ -330,7 +328,7 @@ lock_held_by_current_thread (const struct lock *lock)
 }
 
 /* One semaphore in a list. */
-struct semaphore_elem
+struct semaphore_elem /*(0 w 0)*/
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
@@ -338,13 +336,10 @@ struct semaphore_elem
   };
 
 static bool
-sema_priority_more (const struct list_elem *a, const struct list_elem *b,
-                    void *aux UNUSED)
+sema_priority_more (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) /*(0 w 0)*/
 {
-  const struct semaphore_elem *sema_a = list_entry (a, struct semaphore_elem,
-                                               elem);
-  const struct semaphore_elem *sema_b = list_entry (b, struct semaphore_elem,
-                                               elem);
+  const struct semaphore_elem *sema_a = list_entry (a, struct semaphore_elem, elem);
+  const struct semaphore_elem *sema_b = list_entry (b, struct semaphore_elem, elem);
 
   return (sema_a->priority > sema_b->priority);
 }
@@ -355,7 +350,7 @@ sema_priority_more (const struct list_elem *a, const struct list_elem *b,
 void
 cond_init (struct condition *cond) /*(0 w 0)*/
 {
-  ASSERT (cond != NULL);
+  ASSERT (cond);
 
   list_init (&cond->waiters);
 }
@@ -381,12 +376,12 @@ cond_init (struct condition *cond) /*(0 w 0)*/
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
 void
-cond_wait (struct condition *cond, struct lock *lock)
+cond_wait (struct condition *cond, struct lock *lock) /*(0 w 0)*/
 {
   struct semaphore_elem waiter;
 
-  ASSERT (cond != NULL);
-  ASSERT (lock != NULL);
+  ASSERT (cond);
+  ASSERT (lock);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 

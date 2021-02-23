@@ -90,7 +90,7 @@ static bool alarm_time_less (const struct list_elem *, const struct list_elem *,
    It is not safe to call thread_current() until this function
    finishes. */
 void
-thread_init (void)
+thread_init (void) /*(0 w 0)*/
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
@@ -134,7 +134,7 @@ thread_tick (void) /*(0 w 0)*/
   if (t == idle_thread)
     idle_ticks++;
 #ifdef USERPROG
-  else if (t->pagedir != NULL)
+  else if (t->pagedir)
     user_ticks++;
 #endif
   else
@@ -197,8 +197,7 @@ thread_print_stats (void)
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 tid_t
-thread_create (const char *name, int priority,
-               thread_func *function, void *aux)
+thread_create (const char *name, int priority, thread_func *function, void *aux) /*(0 w 0)*/
 {
   struct thread *t;
   struct kernel_thread_frame *kf;
@@ -269,7 +268,7 @@ thread_block (void)
    it may expect that it can atomically unblock a thread and
    update other data. */
 void
-thread_unblock (struct thread *t)
+thread_unblock (struct thread *t) /*(0 w 0)*/
 {
   enum intr_level old_level;
 
@@ -337,8 +336,7 @@ thread_exit (void)
 }
 
 bool
-thread_priority_more (const struct list_elem *a, const struct list_elem *b,
-               void *aux UNUSED)
+thread_priority_more (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) /*(0 w 0)*/
 {
   const struct thread *thread_a = list_entry (a, struct thread, elem);
   const struct thread *thread_b = list_entry (b, struct thread, elem);
@@ -348,7 +346,7 @@ thread_priority_more (const struct list_elem *a, const struct list_elem *b,
 /* ULTRA: Yields the CPU in an ULTRA manner.  The thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
-thread_yield_ultra (struct thread *cur)
+thread_yield_ultra (struct thread *cur) /*(0 w 0)*/ /*(0 w 0)*/
 {
   enum intr_level old_level;
 
@@ -365,7 +363,7 @@ thread_yield_ultra (struct thread *cur)
 /* Yields the CPU by calling the higher powers (thread_yield_ultra).
    The current thread is not put to sleep and may be scheduled again
    immediately at the scheduler's whim. */
-void thread_yield(void)
+void thread_yield(void) /*(0 w 0)*/
 {
   struct thread *cur = thread_current ();
   thread_yield_ultra(cur);
@@ -391,15 +389,14 @@ thread_foreach (thread_action_func *func, void *aux)
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
-thread_set_priority (int new_priority)
+thread_set_priority (int new_priority) /*(0 w 0)*/
 {
   thread_given_set_priority(thread_current() , new_priority , false);
 }
 
 
 void
-thread_given_set_priority (struct thread *cur, int new_priority,
-                           bool is_donation)
+thread_given_set_priority (struct thread *cur, int new_priority, bool is_donation) /*(0 w 0)*/
 {
   enum intr_level old_level;
   old_level = intr_disable();
@@ -415,7 +412,7 @@ thread_given_set_priority (struct thread *cur, int new_priority,
     * otherwise, just do the donation, set priority to the donated
     * priority, and mark the thread as a donated one.
     */ 
-   if (!is_donation) 
+    if (!is_donation) 
      {
        if (cur->is_donated && new_priority <= cur->priority) 
           cur->base_priority = new_priority;
@@ -427,7 +424,6 @@ thread_given_set_priority (struct thread *cur, int new_priority,
 	      cur->priority = new_priority;
         cur->is_donated = true;
      }
-
 
   /* If the current thread's status is THREAD_READY, then just reinsert it
    * to the ready_list in order to keep the ready_list in order; if its status
@@ -560,8 +556,6 @@ is_thread (struct thread *t)
 static void
 init_thread (struct thread *t, const char *name, int priority) /*(0 w 0)*/
 {
-  enum intr_level old_level;
-
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -697,7 +691,7 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 void
-thread_sleep (int64_t ticks)
+thread_sleep (int64_t ticks) /*(0 w 0)*/
 {
   
   struct thread *cur = thread_current ();
