@@ -154,4 +154,6 @@ int thread_get_load_avg (void);
 
 void thread_sleep (int64_t);
 
+bool thread_priority_more (const struct list_elem*, const struct list_elem*, void *);
+void thread_yield_ultra (struct thread *);
 #endif /* threads/thread.h */

@@ -330,8 +330,8 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
-static bool
-priority_more (const struct list_elem *a, const struct list_elem *b,
+bool
+thread_priority_more (const struct list_elem *a, const struct list_elem *b,
                void *aux UNUSED)
 {
   const struct thread *thread_a = list_entry (a, struct thread, elem);
@@ -341,8 +341,8 @@ priority_more (const struct list_elem *a, const struct list_elem *b,
 }
 /* ULTRA: Yields the CPU in an ULTRA manner.  The thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
-static void
-__thread_yield_ultra (struct thread *cur)
+void
+thread_yield_ultra (struct thread *cur)
 {
   enum intr_level old_level;
 
@@ -350,7 +350,7 @@ __thread_yield_ultra (struct thread *cur)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_insert_ordered(&ready_list, &cur->elem, priority_more, NULL);
+    list_insert_ordered(&ready_list, &cur->elem, thread_priority_more, NULL);
     //TODO remove commented code
     // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
@@ -358,13 +358,13 @@ __thread_yield_ultra (struct thread *cur)
   intr_set_level (old_level);
 }
 
-/* Yields the CPU by calling the higher powers (__thread_yield_ultra).
+/* Yields the CPU by calling the higher powers (thread_yield_ultra).
    The current thread is not put to sleep and may be scheduled again
    immediately at the scheduler's whim. */
 void thread_yield(void)
 {
   struct thread *cur = thread_current ();
-  __thread_yield_ultra(cur);
+  thread_yield_ultra(cur);
 }
 
 
@@ -434,11 +434,11 @@ thread_given_set_priority (struct thread *cur, int new_priority,
   if (cur->status == THREAD_READY)
     {
       list_remove (&cur->elem);
-      list_insert_ordered (&ready_list, &cur->elem, priority_more, NULL);
+      list_insert_ordered (&ready_list, &cur->elem, thread_priority_more, NULL);
     }
   else if (cur->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > cur->priority)
     {
-      __thread_yield_ultra (cur);
+      thread_yield_ultra (cur);
     }
   intr_set_level (old_level);
 }
