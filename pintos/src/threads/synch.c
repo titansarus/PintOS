@@ -181,6 +181,8 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+
+  lock->priority = BASE_PRIORITY;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -274,13 +276,36 @@ lock_try_acquire (struct lock *lock)
    make sense to try to release a lock within an interrupt
    handler. */
 void
-lock_release (struct lock *lock)
+lock_release (struct lock *lock) 
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+  
+  struct thread *cur = thread_current ();
+  enum intr_level old_level = intr_disable ();
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  list_remove (&lock->elem_lock);
+  lock->priority = BASE_PRIORITY;
+  /* Current thread only holds this lock */
+  if (list_empty (&cur->acquired_locks))
+    {
+      cur->is_donated = false;
+      thread_set_priority (cur->base_priority);
+      goto finish;
+    }
+  struct lock *lock_first = list_entry (list_front (&cur->acquired_locks), struct lock, elem_lock);
+  if (lock_first->priority != BASE_PRIORITY)
+    {
+      thread_given_set_priority (cur, lock_first->priority, true);
+      goto finish;
+    }
+  thread_set_priority (cur->base_priority);
+  
+  finish:
+  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

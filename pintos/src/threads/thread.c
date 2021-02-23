@@ -568,7 +568,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  
   t->alarm_time = -1;
+  t->base_priority = priority;
+  t->is_donated = false;
+  list_init (&t->acquired_locks);
+  t->required_lock = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
