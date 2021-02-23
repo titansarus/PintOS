@@ -97,11 +97,11 @@ struct thread
    
 	 int64_t alarm_time;	                /* Detects when a thread should wake-up. */
 
-   /* implementation needed for priority donation. */
-   int base_priority;         
-   bool is_donated;                   
-   struct list acquired_locks;          
-   struct lock *required_lock; 
+    /* implementation needed for priority donation. */
+    int base_priority;         
+    bool is_donated;                   
+    struct list acquired_locks;          
+    struct lock *required_lock; 
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

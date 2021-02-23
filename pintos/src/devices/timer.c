@@ -1,12 +1,12 @@
 #include "devices/timer.h"
-#include <debug.h>
-#include <inttypes.h>
-#include <round.h>
-#include <stdio.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include <debug.h>
+#include <inttypes.h>
+#include <round.h>
+#include <stdio.h>
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -32,16 +32,14 @@ static void real_time_delay (int64_t num, int32_t denom);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
-void
-timer_init (void)
+void timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
-void
-timer_calibrate (void)
+void timer_calibrate (void)
 {
   unsigned high_bit, test_bit;
 
@@ -63,7 +61,7 @@ timer_calibrate (void)
     if (!too_many_loops (loops_per_tick | test_bit))
       loops_per_tick |= test_bit;
 
-  printf ("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
+  printf ("%'" PRIu64 " loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
 }
 
 /* Returns the number of timer ticks since the OS booted. */
@@ -75,7 +73,7 @@ timer_ticks (void)
   int64_t t = ticks;
 
   intr_set_level (old_level);
-  
+
   return t;
 }
 
@@ -89,35 +87,31 @@ timer_elapsed (int64_t then)
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
-void
-timer_sleep (int64_t ticks) /*(0 w 0)*/
+void timer_sleep (int64_t ticks) /*(0 w 0)*/
 {
   int64_t start = timer_ticks ();
 
   /* Put current thread to sleep for specified ticks */
-  thread_sleep(ticks);
+  thread_sleep (ticks);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
    turned on. */
-void
-timer_msleep (int64_t ms)
+void timer_msleep (int64_t ms)
 {
   real_time_sleep (ms, 1000);
 }
 
 /* Sleeps for approximately US microseconds.  Interrupts must be
    turned on. */
-void
-timer_usleep (int64_t us)
+void timer_usleep (int64_t us)
 {
   real_time_sleep (us, 1000 * 1000);
 }
 
 /* Sleeps for approximately NS nanoseconds.  Interrupts must be
    turned on. */
-void
-timer_nsleep (int64_t ns)
+void timer_nsleep (int64_t ns)
 {
   real_time_sleep (ns, 1000 * 1000 * 1000);
 }
@@ -129,8 +123,7 @@ timer_nsleep (int64_t ns)
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_msleep()
    instead if interrupts are enabled. */
-void
-timer_mdelay (int64_t ms)
+void timer_mdelay (int64_t ms)
 {
   real_time_delay (ms, 1000);
 }
@@ -142,8 +135,7 @@ timer_mdelay (int64_t ms)
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_usleep()
    instead if interrupts are enabled. */
-void
-timer_udelay (int64_t us)
+void timer_udelay (int64_t us)
 {
   real_time_delay (us, 1000 * 1000);
 }
@@ -155,19 +147,17 @@ timer_udelay (int64_t us)
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_nsleep()
    instead if interrupts are enabled.*/
-void
-timer_ndelay (int64_t ns)
+void timer_ndelay (int64_t ns)
 {
   real_time_delay (ns, 1000 * 1000 * 1000);
 }
 
 /* Prints timer statistics. */
-void
-timer_print_stats (void)
+void timer_print_stats (void)
 {
-  printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
+  printf ("Timer: %" PRId64 " ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
