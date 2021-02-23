@@ -157,59 +157,100 @@ static void init_thread (struct thread *t, const char *name, int priority);
 
 >> پرسش اول: تعریف `struct`های جدید، `struct`های تغییر داده شده، متغیرهای گلوبال یا استاتیک، `typedef`ها یا `enumeration`ها را در اینجا آورده و برای هریک در ۲۵ کلمه یا کمتر توضیح بنویسید.
 
+
+`base_priority`: اولویت اولیه ریسه است. این متغیر برای زمانی استفاده می‌شود که اولویت ریسه بالا برده شده است و می‌خواهد به اولویت پایه خود برسد.
+
+`is_donated`: مشخص می‌کند که آیا اولویت ریسه به ریسه دیگری داده شده است.
+
+`locks`: قفل‌هایی که یک ریسه نگه‌داری می‌کند در این لیست ذخیره می‌شوند.
+
+‍`lock_blocked`: قفلی که ریسه منتظر آزاد شدن آن است.
+
+<div dir="ltr">
+
+```c
+struct thread{
+	...
+   int base_priority;         
+   bool is_donated;                   
+   struct list locks;          
+   struct lock *lock_blocked;      
+ 	...
+}
+```
+</div>
+
+‍`priority_lock`: بالاترین اولویت بین همه ریسه‌هایی که منتظر آن هستند. زمانی که کسی منتظر آن نیست، مقدار آن برابر با 
+`BASE`
+است.
+
+`elem_lock`: برای مدیریت لیست 
+`locks`
+به‌کار می‌رود.
+
+<div dir="ltr">
+
+```c
+struct lock{
+   ...
+   int max_priority;
+   list_elem elem_lock;
+   ...
+}               
+ ```
+</div>
+<div dir="ltr">
+
+```c
+/* in thread.h */
+#define BASE -1
+```
+</div>
+
 >> پرسش دوم: داده‌ساختارهایی که برای اجرای `priority donation` استفاده شده‌است را توضیح دهید. (می‌توانید تصویر نیز قرار دهید)
 
+هربار که ریسه قفل را می‌گیرد، قفل در لیست 
+`locks`
+متناظر با آن ریسه ذخیره می‌شود. این لیست به ترتیب نزولی بر اساس 
+‍`max_priority`
+مرتب شده است. وقتی که یک قفل توسط ریسه رها می‌شود، از آن لیست حذف می‌شود.
 
-<div dir="ltr">
+برای اهدا، هنگامی که یک ریسه قصد بدست آوردن قفل را دارد، اولویت ریسه‌ای که قفل را دارد چک می‌شود. اگر اولویت آن ریسه کمتر از اولویت ریسه گیرنده قفل بود، عملیات اهدا صورت می‌گیرد و  اولویت ریسه‌ای که قصد گرفتن قفل را دارد بالا می‌رود. در ارتباط با  تغییر اولویت بک ریسه، در صورتی که آن ریسه موهبٌ الیه باشد، 
+`base_priority`
+برابر با مقدار ماقبل آن خواهد بود. اگر در قالبی به‌جز اهدا، قصد تغییر اولویت ریسه را داشته باشیم، 
+`base_priority`
+نیز برابر با اولویت جدید خواهد شد. همچنین در زمان اهدا،
+`is_donated`
+برای موهب برابر با
+true
+خواهد شد. همچنین
+`max_priority`
+در قفلی که در اهدا نقش دارد برابر با اولویت موهب خواهد بود. علاوه بر این،
+`locked_blocked`
+در ریسه موهب به این قفل اشاره خواهد کرد.
 
-```c
-/* in thread.c */
-struct thread {
-	...
-	/* Owned by thread.c. */
-	fixed_point_t priority;	/* Effective priority. */
-	fixed_point_t base_priority; /* Base priority. */
-	
-	/* Owned by synch.c. */
-	struct list held_locks; /* List of locks held by this thread. */
-	...
-};
+سپس بررسی می‌شود که قفل دیگری ریسه موهبٌ الیه را بلوکه کرده است یا خیر اگر این‌طور باشد، ممکن است اهدای تو‌در‌تو صورت بگیرد. اگر نیاز به اهدای مجدد باشد، موهب جدید که ریسه فعلی است  موهبٌ الیه قبلی خواهد بود و موهبٌ الیه جدید ریسه‌ای است که قفل را دارد و موهبٌ الیه را بلوکه کرده است. این اهدای تو‌در‌تو حداکثر تا عمق
+‍`LOCK_LEVEL`
+پیش خواهد رفت.
 
-/* This function needs to be modified to initialize the new struct fields */
-static void init_thread (struct thread *t, const char *name, int priority);
+هنگامی که قفل آزاد می‌شود، آن قفل از لیست
+`locks`
+ریسه نگه‌دارنده آن حذف شده و پس از آن چک می‌کنیم که آیا اهدا صورت گرفته است یا خیر.
+اگر لیست
+`locks`
+خالی باشد، به معنی این است که اهدای تو‌در‌تویی صورت نگرفته و ریسه می‌تواند به اولویت اول خود بازگردد. در غیر این صورت اولین قفل لیست را برمی‌داریم. اگر اولویت این قفل برابر با
+`BASE`
+باشد، باز هم بدین معنی است که اهدای تودرتو صورت نگرفته است.
+و می‌توانیم به اولویت اولیه بازگردیم. در غیر این صورت بدین معنی است که اهدا صورت گرفته و باید اولویت ریسه فعلی را برابر با اولویت
+`lock_priority`
+قرار دهیم. ضمنا توجه شود، از آنجایی که لیست به ترتیب نزولی مرتب شده، همواره قفلی که از بالای لیست برمی‌داریم بیشترین اولویت را دارد.
 
-/* This function will be modified to select the thread with the max priority */
-static struct thread *next_thread_to_run (void);
-
-/* These functions will be modified to get or set the current thread's
- * base priority. */
-void thread_set_priority (int new_priority);
-int thread_get_priority (void);
-```
-</div>
-
-<div dir="ltr">
-
-```c
-/* in synch.c */
-struct lock {
-	...
-	fixed_point_t priority;	/* The max priority of waiters. */
-	struct list_elem elem;	/* List element for held locks list. */
-};
-
-/* These functions will be modified. */
-void sema_up (struct semaphore *);
-void lock_init (struct lock *);
-void lock_acquire (struct lock *);
-bool lock_try_acquire (struct lock *);
-void lock_release (struct lock *);
-```
-</div>
 
 ### الگوریتم
 
 >> پرسش سوم: چگونه مطمئن می‌شوید که ریسه با بیشترین اولویت که منتظر یک قفل، سمافور یا `condition variable` است زودتر از همه بیدار می‌شود؟
+
+
 
 >> پرسش چهارم: مراحلی که هنگام صدازدن `lock_acquire()` منجر به `priority donation` می‌شوند را نام ببرید. دونیشن‌های تو در تو چگونه مدیریت می‌شوند؟
 
