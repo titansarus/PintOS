@@ -74,7 +74,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-static bool alarm_time_less (const struct list_elem *, const struct list_elem *, void *);
+static bool alarm_time_comparator (const struct list_elem *, const struct list_elem *, void *);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -161,7 +161,7 @@ thread_tick (void) /*(0 w 0)*/
 
       /* Remove the thread from sleep queue and unblock it */
       enum intr_level old_level = intr_disable ();
-      
+
       list_remove (elem_cur);
       thread_unblock (t);
 
@@ -699,7 +699,7 @@ thread_sleep (int64_t ticks) /*(0 w 0)*/
   cur->alarm_time = ticks + timer_ticks ();
   
   /* push current thread to the sleepers list so it can wake-up by the time that alarm heats */
-  list_insert_ordered (&sleepers, &cur->elem, alarm_time_less, NULL);
+  list_insert_ordered (&sleepers, &cur->elem, alarm_time_comparator, NULL);
 
   thread_block ();
   
@@ -708,7 +708,7 @@ thread_sleep (int64_t ticks) /*(0 w 0)*/
 
 /* Comparator function for thread by alarm_time attribute */
 static bool
-alarm_time_less (const struct list_elem *a, const struct list_elem *b,
+alarm_time_comparator (const struct list_elem *a, const struct list_elem *b,
                   void *aux UNUSED)
 {
 
