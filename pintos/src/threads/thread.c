@@ -126,7 +126,7 @@ thread_start (void)
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
-thread_tick (void)
+thread_tick (void) /*(0 w 0)*/
 {
   struct thread *t = thread_current ();
 
@@ -235,6 +235,12 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  struct thread *cur=thread_current ();
+  if (t->priority > cur->priority)
+    {
+      thread_yield_ultra (cur);
+    }
+
   return tid;
 }
 
@@ -271,7 +277,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  // list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem, thread_priority_more, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
