@@ -60,7 +60,7 @@ sema_init (struct semaphore *sema, unsigned value)
    interrupts disabled, but if it sleeps then the next scheduled
    thread will probably turn interrupts back on. */
 void
-sema_down (struct semaphore *sema)
+sema_down (struct semaphore *sema) /*(0 w 0)*/
 {
   enum intr_level old_level;
 
@@ -108,14 +108,15 @@ sema_try_down (struct semaphore *sema)
 
    This function may be called from an interrupt handler. */
 void
-sema_up (struct semaphore *sema)
+sema_up (struct semaphore *sema) /*(0 w 0)*/
 {
   enum intr_level old_level;
 
   ASSERT (sema != NULL);
-  struct thread* waited_thread = NULL;
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)){
+  struct thread* waited_thread = NULL;
+  struct thread *cur = thread_current ();
+  while (!list_empty (&sema->waiters)){
     waited_thread=list_entry (list_pop_front (&sema->waiters),struct thread, elem);
     
     thread_unblock (waited_thread);
@@ -123,7 +124,6 @@ sema_up (struct semaphore *sema)
 
   sema->value++;
   
-  struct thread *cur = thread_current ();
   
   if (waited_thread  && cur->priority < waited_thread->priority)
     thread_yield_ultra(cur);
@@ -185,7 +185,7 @@ sema_test_helper (void *sema_)
    onerous, it's a good sign that a semaphore should be used,
    instead of a lock. */
 void
-lock_init (struct lock *lock)
+lock_init (struct lock *lock) /*(0 w 0)*/
 {
   ASSERT (lock != NULL);
 
@@ -204,7 +204,7 @@ lock_init (struct lock *lock)
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
 void
-lock_acquire (struct lock *lock)
+lock_acquire (struct lock *lock) /*(0 w 0)*/
 {
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
@@ -286,7 +286,7 @@ lock_try_acquire (struct lock *lock)
    make sense to try to release a lock within an interrupt
    handler. */
 void
-lock_release (struct lock *lock) 
+lock_release (struct lock *lock) /*(0 w 0)*/
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
