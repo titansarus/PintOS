@@ -277,7 +277,6 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  // list_push_back (&ready_list, &t->elem);
   list_insert_ordered(&ready_list, &t->elem, thread_priority_more, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -358,8 +357,6 @@ thread_yield_ultra (struct thread *cur)
   old_level = intr_disable ();
   if (cur != idle_thread)
     list_insert_ordered(&ready_list, &cur->elem, thread_priority_more, NULL);
-    //TODO remove commented code
-    // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -561,7 +558,7 @@ is_thread (struct thread *t)
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
-init_thread (struct thread *t, const char *name, int priority)
+init_thread (struct thread *t, const char *name, int priority) /*(0 w 0)*/
 {
   enum intr_level old_level;
 
@@ -582,9 +579,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->acquired_locks);
   t->required_lock = NULL;
 
-  old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
-  intr_set_level (old_level);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
