@@ -71,8 +71,11 @@ int64_t
 timer_ticks (void)
 {
   enum intr_level old_level = intr_disable ();
+
   int64_t t = ticks;
+
   intr_set_level (old_level);
+  
   return t;
 }
 
@@ -91,7 +94,7 @@ timer_sleep (int64_t ticks) /*(0 w 0)*/
 {
   int64_t start = timer_ticks ();
 
-  /* Put current thread to sleep for fixed ticks */
+  /* Put current thread to sleep for specified ticks */
   thread_sleep(ticks);
 }
 

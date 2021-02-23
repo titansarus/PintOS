@@ -143,18 +143,14 @@ thread_tick (void) /*(0 w 0)*/
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
-
-  /* iterate over the list of threads in sleeper list
-   * and stop when thread->alarm_time > timer_ticks()
-   *
-   * every thread in our iteration will be unblocked
-   * and removed from the sleepers list so it can be
-   * run later 
-   */
-
   if (list_empty (&sleepers))
     return;
 
+  /* iterate over the list of threads in sleeper list
+     and stop when thread->alarm_time > timer_ticks()
+     every thread in our iteration will be unblocked
+     and removed from the sleepers list so it can be
+     run later */
   struct list_elem *elem_cur = list_begin (&sleepers);
   while (elem_cur != list_end (&sleepers))
     {
@@ -165,8 +161,10 @@ thread_tick (void) /*(0 w 0)*/
 
       /* Remove the thread from sleep queue and unblock it */
       enum intr_level old_level = intr_disable ();
+      
       list_remove (elem_cur);
       thread_unblock (t);
+
       intr_set_level (old_level);
 
       elem_cur = elem_next;
@@ -234,6 +232,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* If newly created thread has higher priority than current thread, yield. */
   struct thread *cur=thread_current ();
   if (t->priority > cur->priority)
     {
@@ -270,14 +269,14 @@ thread_block (void)
 void
 thread_unblock (struct thread *t) /*(0 w 0)*/
 {
-  enum intr_level old_level;
-
   ASSERT (is_thread (t));
-
-  old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered(&ready_list, &t->elem, thread_priority_more, NULL);
+
+  enum intr_level old_level = intr_disable ();
+
+  list_insert_ordered(&ready_list, &t->elem, thread_priority_comparator, NULL);
   t->status = THREAD_READY;
+
   intr_set_level (old_level);
 }
 
@@ -336,7 +335,7 @@ thread_exit (void)
 }
 
 bool
-thread_priority_more (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) /*(0 w 0)*/
+thread_priority_comparator (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) /*(0 w 0)*/
 {
   const struct thread *thread_a = list_entry (a, struct thread, elem);
   const struct thread *thread_b = list_entry (b, struct thread, elem);
@@ -348,15 +347,16 @@ thread_priority_more (const struct list_elem *a, const struct list_elem *b, void
 void
 thread_yield_ultra (struct thread *cur) /*(0 w 0)*/ /*(0 w 0)*/
 {
-  enum intr_level old_level;
-
   ASSERT (!intr_context ());
 
-  old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
+
   if (cur != idle_thread)
-    list_insert_ordered(&ready_list, &cur->elem, thread_priority_more, NULL);
+    list_insert_ordered(&ready_list, &cur->elem, thread_priority_comparator, NULL);
   cur->status = THREAD_READY;
+
   schedule ();
+
   intr_set_level (old_level);
 }
 
@@ -391,55 +391,49 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) /*(0 w 0)*/
 {
-  thread_given_set_priority(thread_current() , new_priority , false);
+  thread_set_priority_on_given(thread_current() , new_priority , false);
 }
 
 
 void
-thread_given_set_priority (struct thread *cur, int new_priority, bool is_donation) /*(0 w 0)*/
+thread_set_priority_on_given (struct thread *cur, int new_priority, bool is_donation) /*(0 w 0)*/
 {
-  enum intr_level old_level;
-  old_level = intr_disable();
-
   ASSERT (new_priority >= PRI_MIN);
   ASSERT (new_priority <= PRI_MAX);
   ASSERT (is_thread (cur));
 
-   /* if this operation is a not donatation
-    *   if the thread has been donated and the new priority is less 
-    *   or equal to the donated priority, we should delay the process
-    *   by preserve it in priority_original.
-    * otherwise, just do the donation, set priority to the donated
-    * priority, and mark the thread as a donated one.
-    */ 
-    if (!is_donation) 
-     {
-       if (cur->is_donated && new_priority <= cur->priority) 
-          cur->base_priority = new_priority;
-       else
-          cur->priority = cur->base_priority = new_priority;
-     }
-   else 
-     {
-	      cur->priority = new_priority;
-        cur->is_donated = true;
-     }
+  enum intr_level old_level = intr_disable();
 
-  /* If the current thread's status is THREAD_READY, then just reinsert it
-   * to the ready_list in order to keep the ready_list in order; if its status
-   * is THREAD_RUNNING, then compare its priority with the largest one's
-   * priority in the ready_list: if the current one's is smaller, then yields
-   * the CPU.
-   */
+  /* If we are not donating:
+     If new priority is higher than base_priority, then it will be the new base_priority.
+     If thread is already a donee, we don't change its effective priority.
+     otherwise, we also change its effective priority. */ 
+  if (!is_donation) 
+    {
+      if (cur->is_donated && new_priority <= cur->priority) 
+        cur->base_priority = new_priority;
+      else
+        cur->priority = cur->base_priority = new_priority;
+    }
+    /* If we are donating, we change the effective priority and set is_donated to true. */
+  else 
+    {
+      cur->priority = new_priority;
+      cur->is_donated = true;
+    }
+
+  /* If thread is already in ready list, we remove and reinsert it into list to keep the list ordered.
+     otherwise, if its priority is less than the highest priority of ready_list, yield. */
   if (cur->status == THREAD_READY)
     {
       list_remove (&cur->elem);
-      list_insert_ordered (&ready_list, &cur->elem, thread_priority_more, NULL);
+      list_insert_ordered (&ready_list, &cur->elem, thread_priority_comparator, NULL);
     }
   else if (cur->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > cur->priority)
     {
       thread_yield_ultra (cur);
     }
+    
   intr_set_level (old_level);
 }
 
@@ -693,19 +687,15 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 void
 thread_sleep (int64_t ticks) /*(0 w 0)*/
 {
-  
   struct thread *cur = thread_current ();
 
   if (ticks <= 0)
     return;
   
-  /* preserve the previous intrrupts' state */
   enum intr_level old_level = intr_disable ();
 
-  /* calculate the time to wake-up
-     before the execution of the line below all the intrupts should be disabled
-     so that the alarm_time calculated by the line below can be as accured as posible
-  */
+  /* calculate the time to wake-up before the execution of the line below all the intrupts should be disabled,
+     so that the alarm_time calculated by the line below can be as accured as posible */
   cur->alarm_time = ticks + timer_ticks ();
   
   /* push current thread to the sleepers list so it can wake-up by the time that alarm heats */
@@ -713,7 +703,6 @@ thread_sleep (int64_t ticks) /*(0 w 0)*/
 
   thread_block ();
   
-  /* restore previous intrrupts' state */
   intr_set_level (old_level);
 }
 
