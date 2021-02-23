@@ -1,16 +1,17 @@
+<dir dir="rtl">
 # سیستم‌های عامل - تمرین گروهی دوم
 
 ## مشخصات گروه
 
 >> نام، نام خانوادگی و ایمیل خود را در ادامه وارد کنید.
 
-نام نام خانوادگی <email@domain.example>
+عرشیا اخوان <letmemakenewone@gmail.com>
 
-نام نام خانوادگی <email@domain.example>
+محمدرضا عبدی <reza_abdi20@yahoo.com>
 
-نام نام خانوادگی <email@domain.example>
+احمد سلیمی <ahsa9978@gmail.com> 
 
-نام نام خانوادگی <email@domain.example>
+امیرمهدی نامجو <amirm137878@gmail.com> 
 
 ## مقدمه
 
@@ -24,21 +25,131 @@
 
 >> پرسش اول: تعریف `struct`های جدید، `struct`های تغییر داده شده، متغیرهای گلوبال یا استاتیک، `typedef`ها یا `enumeration`ها را در اینجا آورده و برای هریک در 25 کلمه یا کمتر توضیح بنویسید.
 
+داده‌ساختار‌ها:
+
+`sleepers`:
+یک لیست مرتب شده از ریسه‌های خوابیده
+
+`sleepers_lock`:
+یک قفل برای امن‌ریسه کردن این لیست
+
+<div dir="ltr">
+
+```c
+/* in timer.c */
+
+static struct list sleepers;
+
+static struct lock sleepers_lock;
+```
+</div>
+
+`alarm_time`:
+لحظه تعیین شده برای بیدار شدن ریسه، که از زمان بالا آمدن سیستم‌عامل محاسبه می‌شود.
+
+`elem`:
+برای اضافه کردن متغیر‌های
+`alarm_time`
+ به لیست
+`sleepers`
+ مورد نیاز است.
+
+<div dir="ltr">
+
+```c
+/* in thread.c */
+
+struct thread {
+	...
+	/* Shared between thread.c, synch.c, and timer.c. */
+	struct list_elem elem; /* List element. */
+
+	/* Owned by timer.c. */
+	int64_t alarm_time;	/* Detects when a thread should wake up. */
+	...
+};
+
+/* This function needs to be modified to initialize the new struct fields */
+static void init_thread (struct thread *t, const char *name, int priority);
+```
+</div>
+
 ### الگوریتم
 
 >> پرسش دوم: به اختصار آن‌چه هنگام صدا زدن تابع `timer_sleep()` رخ می‌دهد و همچنین اثر `timer interrupt handler` را توضیح دهید.
 
+هنگام صدا زدن تابع 
+`timer_sleep()`:
+
+1. متغیر 
+`alarm_time`
+مقدار‌دهی می‌شود به طوری که مقدار آن برابر با مدت زمان خوابیدن + تیک گذشته‌شده از زمان بالا آمدن سیستم‌عامل.
+
+2. وقفه‌ها در سیستم‌عامل متوقف می‌شود.
+
+3. ریسه به لیست 
+`sleepers`
+اضافه می‌شود.
+
+4. ریسه بلوکه می‌شود.
+
+5. وقفه‌ها فعال می‌شوند.
+
+در
+`timer interrupt handler`:
+
+1. لیست چک می‌شود تا بررسی شود که آیا ریسه‌ای باید بیدار شود یا خیر
+
+2. اگر ریسه ای برای بیدار شدن وجود داشت
+`alarm_time`
+آن را بازنشانی می‌کند.
+
+3. وقفه‌ها غیر فعال می‌شوند.
+
+4. ریسه از لیست 
+`sleepers`
+خارج شده و غیر بلوکه می‌شود.
+
+5. وقفه‌ها فعال می‌شوند.
+
 >> پرسش سوم: مراحلی که برای کوتاه کردن زمان صرف‌شده در `timer interrupt handler` صرف می‌شود را نام ببرید.
+
+لیست
+`sleepers`
+به صورت مرتب‌‌شده (صعودی) نگاه داشته می‌شود و هنگام درج ریسه در آن، عملیات درج به صورت مرتب شده بر اساس 
+`alarm_time`
+در می‌آید.
+بدین ترتیب در هر بار کنترل لیست از ابتدای آن تا اولین جایی که
+`alarm_time`
+بیشتر از تعداد تیک های سیستم‌عامل بشود، جلو می‌رود و مابقی را بررسی نمی‌کند.
 
 ### همگام‌سازی
 
 >> پرسش چهارم: هنگامی که چند ریسه به طور همزمان `timer_sleep()` را صدا می‌زنند، چگونه از `race condition` جلوگیری می‌شود؟
 
+تنها زمان کار با لیست
+`sleepers`
+ممکن است حالت مسابقه‌ای رخ دهد، فلذا قفل
+`sleepers_lock`
+را تعریف کرده‌ایم.
+ اگر وقفه‌ها را غیرفعال نکرده بودیم، ممکن بود یک ریسه بعد از اینکه خودش را به
+‍`sleepers`
+اضافه کرد و قبل از بلوکه شدن با وقفه روبه‌رو شود، در
+`timer_interrupt_handler`
+هنگام بیدار کردن ریسه‌ها باید شود که واقعا در وضعیت بلوکه شده باشند.
+
 >> پرسش پنجم: هنگام صدا زدن `timer_sleep()` اگر یک وقفه ایجاد شود چگونه از `race condition` جلوگیری می‌شود؟
+
+هنگام صدا زدن تابع
+`timer_sleep()`
+وقفه‌ها غیرفعال می‌شوند، بنابراین هیچگاه این حالت رخ نخواهد داد.
+
 
 ### منطق
 
 >> پرسش ششم: چرا این طراحی را استفاده کردید؟ برتری طراحی فعلی خود را بر طراحی‌های دیگری که مدنظر داشته‌اید بیان کنید.
+
+استفاده از لیست یکی از بدیهی‌ترین حالات ممکن برای طراحی بوده و ساده و قابل فهم است. همچنین مرتب کردن آن اولین ایده‌ای است برای بهینه سازی می‌سازد و قابل پیاده سازی است. لذا جای بحث باقی نمی‌ماند.
 
 ## زمان‌بند اولویت‌دار
 
@@ -47,6 +158,54 @@
 >> پرسش اول: تعریف `struct`های جدید، `struct`های تغییر داده شده، متغیرهای گلوبال یا استاتیک، `typedef`ها یا `enumeration`ها را در اینجا آورده و برای هریک در ۲۵ کلمه یا کمتر توضیح بنویسید.
 
 >> پرسش دوم: داده‌ساختارهایی که برای اجرای `priority donation` استفاده شده‌است را توضیح دهید. (می‌توانید تصویر نیز قرار دهید)
+
+
+<div dir="ltr">
+
+```c
+/* in thread.c */
+struct thread {
+	...
+	/* Owned by thread.c. */
+	fixed_point_t priority;	/* Effective priority. */
+	fixed_point_t base_priority; /* Base priority. */
+	
+	/* Owned by synch.c. */
+	struct list held_locks; /* List of locks held by this thread. */
+	...
+};
+
+/* This function needs to be modified to initialize the new struct fields */
+static void init_thread (struct thread *t, const char *name, int priority);
+
+/* This function will be modified to select the thread with the max priority */
+static struct thread *next_thread_to_run (void);
+
+/* These functions will be modified to get or set the current thread's
+ * base priority. */
+void thread_set_priority (int new_priority);
+int thread_get_priority (void);
+```
+</div>
+
+<div dir="ltr">
+
+```c
+/* in synch.c */
+struct lock {
+	...
+	fixed_point_t priority;	/* The max priority of waiters. */
+	struct list_elem elem;	/* List element for held locks list. */
+};
+
+/* These functions will be modified. */
+void sema_up (struct semaphore *);
+void lock_init (struct lock *);
+void lock_acquire (struct lock *);
+bool lock_try_acquire (struct lock *);
+void lock_release (struct lock *);
+```
+</div>
 
 ### الگوریتم
 
@@ -93,3 +252,4 @@
 این پیشنهادات میتوانند هم برای تمرین‌های گروهی بعدی همین ترم و هم برای ترم‌های آینده باشد.
 
 >> آیا حرف دیگری دارید؟
+</div>
