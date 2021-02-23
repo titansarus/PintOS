@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -23,6 +24,9 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+
+/* for ticker clock*/
+static struct list sleepers;
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -70,6 +74,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static bool alarm_time_less (const struct list_elem *, const struct list_elem *, void *);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -92,6 +97,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleepers);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -137,6 +143,34 @@ thread_tick (void)
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+
+  /* iterate over the list of threads in sleeper list
+   * and stop when thread->alarm_time > timer_ticks()
+   *
+   * every thread in our iteration will be unblocked
+   * and removed from the sleepers list so it can be
+   * run later 
+   */
+
+  if (list_empty (&sleepers))
+    return;
+
+  struct list_elem *elem_cur = list_begin (&sleepers);
+  while (elem_cur != list_end (&sleepers))
+    {
+      struct list_elem *elem_next = list_next (elem_cur);
+      struct thread *t = list_entry (elem_cur, struct thread, elem);
+      if (t->alarm_time > timer_ticks())
+        break;
+
+      /* Remove the thread from sleep queue and unblock it */
+      enum intr_level old_level = intr_disable ();
+      list_remove (elem_cur);
+      thread_unblock (t);
+      intr_set_level (old_level);
+
+      elem_cur = elem_next;
+    }
 }
 
 /* Prints thread statistics. */
@@ -463,6 +497,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->alarm_time = -1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -582,3 +617,42 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void
+thread_sleep (int64_t ticks)
+{
+  
+  struct thread *cur = thread_current ();
+
+  if (ticks <= 0)
+    return;
+  
+  /* preserve the previous intrrupts' state */
+  enum intr_level old_level = intr_disable ();
+
+  /* calculate the time to wake-up
+     before the execution of the line below all the intrupts should be disabled
+     so that the alarm_time calculated by the line below can be as accured as posible
+  */
+  cur->alarm_time = ticks + timer_ticks ();
+  
+  /* push current thread to the sleepers list so it can wake-up by the time that alarm heats */
+  list_insert_ordered (&sleepers, &cur->elem, alarm_time_less, NULL);
+
+  thread_block ();
+  
+  /* restore previous intrrupts' state */
+  intr_set_level (old_level);
+}
+
+/* Comparator function for thread by alarm_time attribute */
+static bool
+alarm_time_less (const struct list_elem *a, const struct list_elem *b,
+                  void *aux UNUSED)
+{
+
+  const struct thread *thread_a = list_entry (a, struct thread, elem);
+  const struct thread *thread_b = list_entry (b, struct thread, elem);
+
+  return thread_a->alarm_time < thread_b->alarm_time;
+}
