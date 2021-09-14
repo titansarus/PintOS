@@ -45,13 +45,13 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
   list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
+
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
   char *cmd = palloc_get_page (0);
   if (cmd == NULL)
     return TID_ERROR;
