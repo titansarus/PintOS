@@ -105,9 +105,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
       else
         {
-          lock_acquire(&fs_lock);
-          f->eax = filesys_create ((char *) args[1], args[2]);
-          lock_release(&fs_lock);
+          f->eax = filesys_create_l ((char *) args[1], args[2]);
         }
     }
   else if (args[0] == SYS_REMOVE)
@@ -119,9 +117,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
       else
         {
-          lock_acquire(&fs_lock);
-          f->eax = filesys_remove ((char *) args[1]);
-          lock_release(&fs_lock);
+          f->eax = filesys_remove_l ((char *) args[1]);
         }
     }
   else if (args[0] == SYS_OPEN)
@@ -132,9 +128,7 @@ syscall_handler (struct intr_frame *f UNUSED)
           exit (-1);
         }
       else {
-        lock_acquire(&fs_lock);
-        struct file* file_ = filesys_open((char*) args[1]);
-        lock_release(&fs_lock);
+        struct file* file_ = filesys_open_l((char*) args[1]);
         if (file_ == NULL)
           f->eax = -1;
         else

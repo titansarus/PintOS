@@ -24,4 +24,9 @@ bool filesys_create (const char *name, off_t initial_size);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 
+/* thread safe abstraction over functions above (using fs_lock) */
+bool filesys_create_l (const char *, off_t);
+struct file * filesys_open_l (const char *);
+bool filesys_remove_l (const char *);
+
 #endif /* filesys/filesys.h */
