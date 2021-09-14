@@ -43,34 +43,24 @@ init_process_status(struct process_status* ps)
 tid_t
 process_execute (const char *file_name)
 {
-  char *fn_copy;
   tid_t tid;
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
-  
   list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
-  struct t_args *targs = malloc (sizeof (struct t_args));
-  
-  //iftoff
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
   char *cmd = palloc_get_page (0);
   if (cmd == NULL)
     return TID_ERROR;
   strlcpy (cmd, file_name, PGSIZE);
-  //endtof
-
+  
+  struct t_args *targs = malloc (sizeof (struct t_args));
   targs->fn = cmd;
   targs->ps = ps;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, targs);
-  palloc_free_page (fn_copy);
   if (tid == TID_ERROR)
     {
       palloc_free_page (cmd);
@@ -81,8 +71,11 @@ process_execute (const char *file_name)
   sema_down(&ps->ws);
 
   if (ps->is_exited && ps->exit_code == -1)
-    //todo: free child status
+  {
+    list_remove(&ps->children_elem);
+    free(ps);
     return -1;
+  }
   
   return tid;
 }
@@ -123,6 +116,7 @@ push_args (char* cmd, int cmd_len, int argc, int* esp)
     arg += strlen (arg) + 1;
     *esp += 4;
   }
+
   *esp -= 4 * (argc);
   return *esp;
 
@@ -133,7 +127,7 @@ push_args (char* cmd, int cmd_len, int argc, int* esp)
 static void
 start_process (struct t_args *targs)
 {
-  char *file_name = targs->fn;
+  char *cmd = targs->fn;
   struct intr_frame if_;
   bool success;
 
@@ -144,17 +138,17 @@ start_process (struct t_args *targs)
   if_.eflags = FLAG_IF | FLAG_MBS;
 
   int argc = 0;
-  int cmd_len = strlen (file_name);
+  int cmd_len = strlen (cmd);
   /* putting \0 at the end of each word and calculating argc */
   char *token, *save_ptr;
-  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+  for (token = strtok_r (cmd, " ", &save_ptr); token != NULL;
       token = strtok_r (NULL, " ", &save_ptr))
 	  argc++;
 
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (cmd, &if_.eip, &if_.esp);
   
   struct thread* t=thread_current ();
-  thread_rename (t,file_name);
+  thread_rename (t,cmd);
 
   t->ps = targs->ps;
   t->ps->pid = t->tid;
@@ -168,13 +162,13 @@ start_process (struct t_args *targs)
     t->ps->is_exited=true;
     sema_up (&(t->ps->ws));
     
-    palloc_free_page (file_name);
+    palloc_free_page (cmd);
     
     thread_exit ();
   }
 
-  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
-  palloc_free_page (file_name);
+  int argv = push_args (cmd, cmd_len, argc, &if_.esp);
+  palloc_free_page (cmd);
 
   sema_up (&(t->ps->ws));
   
