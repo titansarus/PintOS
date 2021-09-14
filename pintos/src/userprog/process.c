@@ -158,21 +158,23 @@ start_process (struct t_args *targs)
   struct thread* t=thread_current ();
   thread_rename (t,file_name);
 
-  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
-
   t->ps = targs->ps;
   t->ps->pid = t->tid;
   list_init(&t->children);
   
   /* If load failed, quit. */
-  palloc_free_page (file_name);
   if (!success){
     t->ps->exit_code=-1;
     t->ps->is_exited=true;
     sema_up (&(t->ps->ws));
     
+    palloc_free_page (file_name);
+    
     thread_exit ();
   }
+
+  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
+  palloc_free_page (file_name);
 
   sema_up (&(t->ps->ws));
   
