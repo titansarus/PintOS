@@ -58,17 +58,17 @@ int push_args (const char* command, int len, int argc, int* esp){
   
   /* pushing command's content */
   *esp -= len + 1;
-  memcpy (*esp, command, len + 1);
+  memcpy ((void*) *esp, command, len + 1);
   int argv_offset =* esp;
 
   /* stack align */
   int align_size = (4 - (*esp % 4)) % 4;
   *esp -= align_size;
-  memset (*esp, 0xff, align_size);
+  memset ((void*) *esp, 0xff, align_size);
   
   /* argv[argc+1]=NULL; */ 
   *esp -= 4;
-  memset (*esp, 0, 4);
+  memset ((void*) *esp, 0, 4);
 
   /* pushing argv */
   *esp -= 4 * argc;
