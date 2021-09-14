@@ -48,6 +48,50 @@ process_execute (const char *file_name)
   return tid;
 }
 
+
+int handle_filename (const char* argv,int len,int argc, int* esp){
+  // size_t len = strnlen (argv, -vtop (argv));
+  // if (len == -vtop (argv)){
+  //   return -1;
+  // }
+  
+  
+  /* pushing argv's content */
+  *esp-=len+1;
+  memcpy(*esp,argv,len+1);
+  int argv_offset=*esp;
+
+  /* stack align */
+  int align_size=(4-(*esp%4))%4;
+  *esp-=align_size;
+  // printf("esp is:%d\n",*esp);
+  memset(*esp,0xff,align_size);
+  
+  /* argv[argc+1]=NULL; */ 
+  *esp-=4;
+  memset(*esp,0,4);
+  // printf("esp is:%d\n",*esp);
+
+  /* pushing argv */
+  *esp-=4*argc;
+  // printf("esp is:%d\n",*esp);
+  char* arg=argv;
+  for(int i=0;i<argc;i++){
+    *((int*)(*esp))=argv_offset;
+    argv_offset+=strlen(arg)+1;
+    arg+=strlen(arg)+1;
+    *esp+=4;
+    // printf("esp is:%d\n",*esp);
+  }
+  *esp-=4*(argc+2);
+  // printf("esp is:%d\n",*esp);
+  *((int*)(*esp+4))=*esp+8;
+  *((int*)(*esp))=argc;
+
+  // printf("esp is:%d\n",*esp);
+
+}
+
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -62,6 +106,15 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+
+  int argc;
+  int len=strlen(file_name);
+  /* putting \0 at the end of each word and calculating argc */
+  char *token, *save_ptr;
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+      token = strtok_r (NULL, " ", &save_ptr))
+	  argc++;
+
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
@@ -69,6 +122,12 @@ start_process (void *file_name_)
   if (!success)
     thread_exit ();
 
+
+  // handle_filename(file_name,len,argc,&if_.esp);
+  /* stask align */
+  // int align_size=((*esp%16)+16)%16;
+  // *esp-=align_size;
+  // if._esp -= 
   if_.esp -= 0x24;
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
