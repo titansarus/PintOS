@@ -228,17 +228,11 @@ syscall_handler (struct intr_frame *f UNUSED)
     
           if (fid == STDIN_FILENO)
             {
-              uint8_t *buffer = (uint8_t *) args[2];
-              size_t i = 0;
-              while (i < args[3]) {
-                buffer[i] = input_getc ();
-                if (buffer[i++] == '\n')
-                  {
-                    buffer[i-1] = '\0';
-                    break;
-                  }
-              }
-              f->eax = i;
+              for (unsigned i = 0; i < size; i++)
+                {
+                  buffer[i] = input_getc ();
+                }
+              f->eax = size;
             }
           else if (fid == STDOUT_FILENO)
             {

@@ -33,7 +33,6 @@ init_process_status(struct process_status* ps)
   sema_init(&ps->ws,0);
   ps->rc=2;
   lock_init(&ps->rc_lock);
-  ps->already_waited=false;
 }
 
 
