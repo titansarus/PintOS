@@ -155,10 +155,10 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool is_dir)
 {
   struct inode_disk *disk_inode = NULL;
-  bool success = false, is_dir = false;
+  bool success = false;
 
   ASSERT (length >= 0);
 
@@ -277,7 +277,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
 {
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
-
+  lock_acquire(&inode->i_lock);
   while (size > 0)
     {
       /* Disk sector to read, starting byte offset within sector. */
@@ -302,6 +302,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       bytes_read += chunk_size;
     }
 
+
+  lock_release(&inode->i_lock);
   return bytes_read;
 }
 
@@ -318,6 +320,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
   if (inode->deny_write_cnt)
     return 0;
+
+
+  lock_acquire(&inode->i_lock);
 
   /* extend file if needed */
   if (byte_to_sector (inode, offset + size - 1) == EOF)
@@ -361,6 +366,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
 
+
+  lock_release(&inode->i_lock);
   return bytes_written;
 }
 
