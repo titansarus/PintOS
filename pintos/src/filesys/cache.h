@@ -8,12 +8,18 @@
 
 #define BUFFER_CACHE_SIZE 64
 
+struct cache_blk_status {
+    int read_cnt;
+    int write_cnt;
+};
+
 struct cache_block {
     block_sector_t sector;
     char data[BLOCK_SECTOR_SIZE];
     int dirty;
     int valid;
     struct lock c_lock;
+    struct cache_blk_status status;
 
 #ifdef SHAKH
     struct condition ok_to_read;
@@ -30,6 +36,8 @@ struct cache_block {
 struct cache_block cache_blocks[BUFFER_CACHE_SIZE];
 struct list LRU;
 struct lock LRU_modify_lock;
+int LRU_hit;
+int LRU_miss;
 
 /* Initialize cache. */
 void cache_init (void);
@@ -45,8 +53,11 @@ void cache_write (struct block *, block_sector_t , void *, off_t , int);
 /* Write-back all cache blocks and invalidate them.*/
 void cache_flush(struct block *);
 
-// /* Write entire cache to disk. */
-// void cache_flush (struct block *fs_device);
+/* cache stats API for SYS_CACHE_SPEC syscall */
+uint32_t cache_get_total_read_cnt (void);
+uint32_t cache_get_total_write_cnt(void);
+uint32_t cache_get_total_miss(void);
+uint32_t cache_get_total_hit (void);
 
 #endif
 

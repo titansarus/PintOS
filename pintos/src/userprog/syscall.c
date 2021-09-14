@@ -12,6 +12,7 @@
 #include "filesys/file.h"
 #include "filesys/directory.h"
 #include "filesys/inode.h"
+#include "filesys/cache.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
 #ifdef USERPROG
@@ -41,6 +42,7 @@ static void sys_chdir (struct intr_frame *, char *);
 static void sys_readdir (struct intr_frame *, fid_t, char *);
 static void sys_isdir (struct intr_frame *, fid_t);
 static void sys_inumber (struct intr_frame *, fid_t);
+static void sys_cache_spec(struct intr_frame *,uint32_t );
 
 
 
@@ -111,6 +113,7 @@ validate_args(uint32_t *args){
     case SYS_MKDIR:
     case SYS_CHDIR:
     case SYS_CLOSE:
+    case SYS_CACHE_SPEC:
       if (!validate_arg (args+1,sizeof (uint32_t)))return false;
   }
   
@@ -177,6 +180,8 @@ syscall_handler (struct intr_frame *f)
       case SYS_ISDIR:sys_isdir(f, (fid_t) args[1]);
       break;
       case SYS_INUMBER:sys_inumber(f, (fid_t) args[1]);
+      break;
+      case SYS_CACHE_SPEC:sys_cache_spec(f, args[1]);
       break;
       default:sys_exit (f, args[1]);
     }
@@ -451,4 +456,30 @@ static void sys_inumber (struct intr_frame *f, fid_t fid)
 {
   struct file *file = get_file_descriptor (fid)->file;
   f->eax = file ? (block_sector_t) inode_get_inumber (file_get_inode (file)) : -1;
+}
+
+#define CACHE_R_CNT 0x1
+#define CACHE_W_CNT 0x2
+#define CACHE_MISS  0x4
+#define CACHE_HIT   0x8
+
+
+static void sys_cache_spec(struct intr_frame *f,uint32_t flag){
+  switch (flag){
+    case CACHE_R_CNT:
+      f->eax= cache_get_total_read_cnt();
+    break;
+    case CACHE_W_CNT:
+      f->eax= cache_get_total_write_cnt();
+    break;
+    case CACHE_MISS:
+      f->eax= cache_get_total_miss(); 
+    break;
+    case CACHE_HIT:
+      f->eax= cache_get_total_hit();
+    break;
+    default:
+      f->eax = -1;
+  }
+ 
 }

@@ -13,6 +13,10 @@ static void cache_block_init(struct cache_block* c_b){
     lock_init(&c_b->c_lock);
     c_b->dirty=0;
     c_b->valid=0;
+    
+    c_b->status.read_cnt=0;
+    c_b->status.write_cnt=0;
+
 }
 
 void cache_init(){
@@ -26,6 +30,8 @@ void cache_init(){
         list_push_back (&LRU, &(cache_blocks[i].elem));
     }
     
+    LRU_miss=0;
+    LRU_hit=0;
     lock_release(&LRU_modify_lock);
 }
 
@@ -50,9 +56,15 @@ static struct cache_block *get_cache_block (struct block *fs_device, block_secto
             list_push_back(&LRU,&cache_blocks[i].elem);
             
             lock_release(&LRU_modify_lock);
+
+            // cache hit
+            LRU_hit++;
             return &cache_blocks[i];
         }
     }
+    
+    // cache missed
+    LRU_miss++;
 
     // fetch the block and store it in the cache
     lock_acquire(&LRU_modify_lock);
@@ -89,6 +101,7 @@ void cache_read (struct block *fs_device, block_sector_t sector, void *dst, off_
         lock_acquire(&cache->c_lock);
 
         memcpy(dst, &(cache->data[offset]), min(bytes_left, BLOCK_SECTOR_SIZE));
+        cache->status.read_cnt++;
 
         lock_release(&cache->c_lock);
         
@@ -112,6 +125,7 @@ void cache_write (struct block *fs_device, block_sector_t sector, void *src, off
         
         memcpy(&(cache->data[offset]), src, min(bytes_left, BLOCK_SECTOR_SIZE));
         cache->dirty=1;
+        cache->status.write_cnt++;
 
         lock_release(&cache->c_lock);
 
@@ -133,4 +147,33 @@ void cache_flush(struct block *fs_device)
         cache_write_back(fs_device,cb);
         lock_release(&cb->c_lock);
     }
+}
+
+uint32_t 
+cache_get_total_read_cnt (){
+    uint32_t res=0;
+    for (int i=0;i<BUFFER_CACHE_SIZE;i++)
+        res+=cache_blocks[i].status.read_cnt;
+    
+    return res;
+}
+
+uint32_t
+cache_get_total_write_cnt(){
+    uint32_t res = 0;
+    for (size_t i = 0; i < BUFFER_CACHE_SIZE; i++)
+    {
+        res += cache_blocks[i].status.write_cnt;      
+    }
+    return res;
+}
+
+uint32_t 
+cache_get_total_miss (){
+    return LRU_miss;
+}
+
+uint32_t 
+cache_get_total_hit (){
+    return LRU_hit;
 }
