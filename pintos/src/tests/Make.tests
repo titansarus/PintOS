@@ -76,7 +76,7 @@ ifeq ($(filter userprog, $(KERNEL_SUBDIRS)), userprog)
 TESTCMD += -f
 endif
 TESTCMD += $(if $($(TEST)_ARGS),run '$(*F) $($(TEST)_ARGS)',run $(*F))
-TESTCMD += < /dev/null
+TESTCMD += $(if $($(TEST)_INPUT), < $($(TEST)_INPUT), < /dev/null)
 TESTCMD += 2> $(TEST).errors $(if $(VERBOSE),|tee,>) $(TEST).output
 %.output: kernel.bin loader.bin
 	$(TESTCMD)
