@@ -118,7 +118,7 @@ start_process (void *file_name_)
   int argv = push_args (file_name, len, argc, &if_.esp);
 
   /* stask align */
-  if_.esp -=((((int) (if_.esp) % 16) + 16) % 16) - 4;
+  if_.esp -=(unsigned int)(if_.esp) % 16 - 4;
   
   /* pushing argv and argc */
   if_.esp -= 8;
