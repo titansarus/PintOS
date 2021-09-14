@@ -281,7 +281,7 @@ process_exit (void)
     }
 
   /* Close executable file of thread. */
-  file_close(cur->exec_file);
+  file_close_l(cur->exec_file);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -390,7 +390,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open_l (file_name);
   t->exec_file = file;
   if (file == NULL)
     {
