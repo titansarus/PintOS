@@ -47,6 +47,25 @@ kill(int exit_code)
 
     thread_exit ();
 }
+
+static int create_fd(struct file *file_) {
+  #ifdef USERPROG
+    struct thread *t = thread_current ();
+    struct file_descriptor *fd = malloc (sizeof (struct file_descriptor));
+    //iftof
+    if (t->next_fid ==2){
+        memset(&(thread_current()->fd_list),0,sizeof(struct list));
+        list_init(&thread_current ()->fd_list);
+    }
+    //endtof
+    fd->file = file_;
+    fd->fid = t->next_fid++;
+    list_push_back (&t->fd_list, &fd->fd_elem);
+    return fd->fid;
+  #endif
+}
+
+
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
@@ -95,6 +114,21 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
       else
         f->eax = filesys_remove ((char *) args[1]);
+    }
+  else if (args[0] == SYS_OPEN)
+    {
+      if (args[1] == NULL || !validate_addr (args[1]))
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else {
+        struct file* file_ = filesys_open((char*) args[1]);
+        if (file_ == NULL)
+          f->eax = -1;
+        else
+          f->eax = create_fd(file_);
+      }
     }
   else if (args[0] == SYS_WRITE)
     {

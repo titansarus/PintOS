@@ -55,6 +55,7 @@ process_execute (const char *file_name)
   //iftoff
   memset(&(thread_current()->children),0,sizeof(struct list));
   list_init(&thread_current ()->children);
+
   //endtof
 
   list_push_back (&(thread_current ()->children) , &ps->children_elem);

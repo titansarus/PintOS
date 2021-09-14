@@ -9,6 +9,14 @@ void process_exit (void);
 void process_activate (void);
 
 typedef int pid_t;
+typedef int fid_t;
+
+struct file_descriptor {
+    fid_t fid;
+    const char *name;
+    struct file *file;
+    struct list_elem fd_elem;
+};
 
 struct process_status
 {
