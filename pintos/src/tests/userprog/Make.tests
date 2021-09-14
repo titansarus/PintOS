@@ -17,7 +17,7 @@ exec-bound-2 exec-bound-3 exec-multiple exec-missing exec-bad-ptr       \
 wait-simple wait-twice wait-killed wait-bad-pid multi-recurse           \
 multi-child-fd rox-simple rox-child rox-multichild bad-read bad-write   \
 bad-read2 bad-write2 bad-jump bad-jump2 iloveos practice stack-align-1  \
-stack-align-2 stack-align-3 stack-align-4 read-stdin)
+stack-align-2 stack-align-3 stack-align-4 read-stdin seek-and-tell)
 
 tests/userprog_PROGS = $(tests/userprog_TESTS) $(addprefix \
 tests/userprog/,child-simple child-args child-bad child-close child-rox)
@@ -89,6 +89,7 @@ tests/userprog/boundary.c tests/main.c
 tests/userprog/write-zero_SRC = tests/userprog/write-zero.c tests/main.c
 tests/userprog/write-stdin_SRC = tests/userprog/write-stdin.c tests/main.c
 tests/userprog/write-bad-fd_SRC = tests/userprog/write-bad-fd.c tests/main.c
+tests/userprog/seek-and-tell_SRC = tests/userprog/seek-and-tell.c tests/main.c
 tests/userprog/exec-once_SRC = tests/userprog/exec-once.c tests/main.c
 tests/userprog/exec-arg_SRC = tests/userprog/exec-arg.c tests/main.c
 tests/userprog/exec-bound_SRC = tests/userprog/exec-bound.c       \
