@@ -81,8 +81,11 @@ process_execute (const char *file_name)
   sema_down(&ps->ws);
 
   if (ps->is_exited && ps->exit_code == -1)
-    //todo: free child status
+  {
+    list_remove(&ps->children_elem);
+    free(ps);
     return -1;
+  }
   
   return tid;
 }
