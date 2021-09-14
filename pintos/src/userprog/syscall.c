@@ -36,4 +36,16 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       f->eax = args[1] + 1;
     }
+  else if (args[0] == SYS_WRITE)
+    {
+      /* TODO: implement for all file descriptors */
+      int fd = args[1];
+      const void *buffer = (void *) args[2];
+      unsigned size = args[3];
+      if (fd == 1)
+        {
+          putbuf ((const char *) args[2], size);          
+          f->eax = size;
+        }
+    }
 }
