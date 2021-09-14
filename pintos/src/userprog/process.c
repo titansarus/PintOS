@@ -22,6 +22,9 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void free_children(struct thread*);
+static void free_fds(struct thread*);
+
 
 void
 init_process_status(struct process_status* ps)
@@ -250,6 +253,22 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  
+  /* let the parrent thread know that we are exiting */
+  decrease_rc(cur->ps);
+
+  free_children(cur);
+  free_fds(cur);
+  
+  /* release fs_lock if held */
+  if (lock_held_by_current_thread (&fs_lock))
+    lock_release (&fs_lock);
+
+  /* free current threads process_status if the parrent thread is dead */
+  if (cur->ps->rc == 0)
+    free(cur->ps);
+  else
+    sema_up (& (cur->ps->ws));
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -630,4 +649,36 @@ decrease_rc (struct process_status* ps)
   lock_acquire(&ps->rc_lock);
   ps->rc--;
   lock_release(&ps->rc_lock);
+}
+
+/* free up the process_status of child threads if needed */
+static void
+free_children (struct thread* cur)
+{  
+  struct list *children = &cur->children;
+  for (struct list_elem *e = list_begin (children); e != list_end (children); e = list_next (e))
+    {
+      struct process_status *current_child = list_entry (e, struct process_status, children_elem);
+      if (current_child->rc == 1)
+        {
+          e = list_remove (&current_child->children_elem)->prev;
+          free (current_child);
+        }
+    }
+}
+
+/* free up resources for file descriptors */
+static void
+free_fds (struct thread* cur)
+{
+  struct list *fd_list = &cur->fd_list;
+  for (struct list_elem *e = list_begin (fd_list); e != list_end (fd_list); e = list_next (e))
+    {
+      struct file_descriptor *fd = list_entry (e, struct file_descriptor, fd_elem);
+      e = list_remove (&fd->fd_elem)->prev;
+      lock_acquire(&fs_lock);
+      file_close (fd->file);
+      lock_release(&fs_lock);
+      free (fd);
+    }
 }

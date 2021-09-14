@@ -284,44 +284,6 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-  struct thread* cur = thread_current ();
-
-  #ifdef USERPROG
-  decrease_rc(cur->ps);
-  /* free up the process_status of child threads if needed */
-  struct list *children = &cur->children;
-  for (struct list_elem *e = list_begin (children); e != list_end (children); e = list_next (e))
-    {
-      struct process_status *current_child = list_entry (e, struct process_status, children_elem);
-      if (current_child->rc == 1)
-        {
-          e = list_remove (&current_child->children_elem)->prev;
-          free (current_child);
-        }
-    }
-  
-  /* free up resources for file descriptors */
-  struct list *fd_list = &cur->fd_list;
-  for (struct list_elem *e = list_begin (fd_list); e != list_end (fd_list); e = list_next (e))
-    {
-      struct file_descriptor *fd = list_entry (e, struct file_descriptor, fd_elem);
-      e = list_remove (&fd->fd_elem)->prev;
-      lock_acquire(&fs_lock);
-      file_close (fd->file);
-      lock_release(&fs_lock);
-      free (fd);
-    }
-
-  if (lock_held_by_current_thread (&fs_lock))
-    lock_release (&fs_lock);
-
-  if (cur->ps->rc == 0)
-    free(cur->ps);
-  else
-    sema_up (& (cur->ps->ws));
-  #endif
-
-
 #ifdef USERPROG
   process_exit ();
 #endif
