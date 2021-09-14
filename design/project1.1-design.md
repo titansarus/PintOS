@@ -256,6 +256,14 @@ static struct lock fs_lock; // so that only one thread at the time accesses the 
 ```
 
 ```c
+/* In pintos/src/userprog/thread.h */
+struct FD { // file descriptor mapping
+  int fid;
+  struct file * fp;
+}
+```
+
+```c
 /* In pintos/src/threads/thread.h */
 struct thread
 {
@@ -269,7 +277,7 @@ struct thread
   struct list children_status;
 
   /* list of all file descriptors */
-  int fd[MAX_FILE_DESCRIPTOR];
+  struct FD *fd[MAX_FILE_DESCRIPTOR];
 #endif
   ...
 };
@@ -284,10 +292,18 @@ struct thread
 ، یک آرایه از
 `file descriptor`
 ها ذخیره می‌کنیم. این آرایه از نوع
-`int`
+`*FD`
 است و اندازه آن برابر
 `MAX_FILE_DESCRIPTOR`
 است که آن را برابر ۱۰۲۴ تعریف کرده‌ایم.
+
+در هر
+`FD`
+شماره
+`file descriptor`
+ آن و فایلی
+(`*file`)
+ که به آن نگاشت شده است را ذخیره کرده ایم.
 
 بدین ترتیب، توصیف کننده‌‌ها در هر پردازه یکتا هستند. ولی در سیستم عامل یکتا نیستند. یعنی یک
 `file descriptor`
