@@ -3,8 +3,18 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
+
+/* Validate arguments for all syscalls */
+static bool
+validate_arg (void *arg)
+{
+  struct thread *current_thread = thread_current ();
+  uint32_t *ptr = (uint32_t *) arg;
+  return arg != NULL && is_user_vaddr (ptr) && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
+}
 
 void
 syscall_init (void)
@@ -16,6 +26,13 @@ static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
+
+  if (!validate_arg (args) || !validate_arg (args + 1) || !validate_arg (args + 2) || !validate_arg (args + 3))
+    {
+      f->eax = -1;
+      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+      thread_exit ();
+    }
 
   /*
    * The following print statement, if uncommented, will print out the syscall
@@ -50,6 +67,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
   else if (args[0] == SYS_HALT)
     {
-     shutdown_power_off();
+      shutdown_power_off();
+    }
+  else
+    {
+      f->eax = -1;
+      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+      thread_exit ();
     }
 }
