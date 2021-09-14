@@ -32,9 +32,6 @@ struct process_status
    */
   struct semaphore ws; 
 
-  /* If parent already waited on this child once!  */
-  bool already_waited;
-  
   /* initially 2
    * used for freeing resources 
    * number of alive threads referencing to this status  
