@@ -167,7 +167,7 @@ start_process (struct t_args *targs)
     thread_exit ();
   }
 
-  int argv = push_args (cmd, cmd_len, argc, &if_.esp);
+  int argv = push_args (cmd, cmd_len, argc, (int*) &if_.esp);
   palloc_free_page (cmd);
 
   sema_up (&(t->ps->ws));

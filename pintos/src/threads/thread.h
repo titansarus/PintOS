@@ -30,6 +30,7 @@ typedef int fid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define MAX_FILE_DESCRIPTOR 1024        /* Max file discriptor count for each thread */
 
 /* A kernel thread or user process.
 
