@@ -25,7 +25,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -41,11 +40,11 @@ static struct lock tid_lock;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame
-  {
-    void *eip;                  /* Return address. */
-    thread_func *function;      /* Function to call. */
-    void *aux;                  /* Auxiliary data for function. */
-  };
+{
+  void *eip;                  /* Return address. */
+  thread_func *function;      /* Function to call. */
+  void *aux;                  /* Auxiliary data for function. */
+};
 
 /* Statistics. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
@@ -68,10 +67,10 @@ static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
-static void *alloc_frame (struct thread *, size_t size);
-static void schedule (void);
-void thread_schedule_tail (struct thread *prev);
-static tid_t allocate_tid (void);
+                                        static void *alloc_frame (struct thread *, size_t size);
+                                        static void schedule (void);
+                                        void thread_schedule_tail (struct thread *prev);
+                                        static tid_t allocate_tid (void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -86,8 +85,8 @@ static tid_t allocate_tid (void);
 
    It is not safe to call thread_current() until this function
    finishes. */
-void
-thread_init (void)
+  void
+  thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
@@ -130,8 +129,8 @@ thread_tick (void)
   if (t == idle_thread)
     idle_ticks++;
 #ifdef USERPROG
-  else if (t->pagedir != NULL)
-    user_ticks++;
+    else if (t->pagedir != NULL)
+      user_ticks++;
 #endif
   else
     kernel_ticks++;
@@ -287,12 +286,12 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
 #endif
-  
+
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  list_remove (&thread_current()->allelem);
+  list_remove (&thread_current ()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -328,7 +327,8 @@ thread_foreach (thread_action_func *func, void *aux)
   for (e = list_begin (&all_list); e != list_end (&all_list);
        e = list_next (e))
     {
-      struct thread *t = list_entry (e, struct thread, allelem);
+      struct thread *t = list_entry (e,
+      struct thread, allelem);
       func (t, aux);
     }
 }
@@ -377,7 +377,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -426,7 +426,7 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void)
@@ -461,18 +461,18 @@ init_thread (struct thread *t, const char *name, int priority)
 
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
-  thread_rename(t,name);
+  thread_rename (t, name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   /* 0 and 1 for stdin and stdout */
   t->next_fid = 2;
 
-  memset(&(t->fd_list),0,sizeof(struct list));
-  list_init(&t->fd_list);
-  
-  memset(&(t->children),0,sizeof(struct list));
-  list_init(&(t->children));
+  memset (&(t->fd_list), 0, sizeof (struct list));
+  list_init (&t->fd_list);
+
+  memset (&(t->children), 0, sizeof (struct list));
+  list_init (&(t->children));
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -503,7 +503,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return list_entry (list_pop_front (&ready_list),
+  struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -588,19 +589,18 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
-uint32_t thread_stack_ofs = offsetof (struct thread, stack);
-
+uint32_t thread_stack_ofs = offsetof (
+struct thread, stack);
 
 /* set new name for thread */
 void
-thread_rename (struct thread* t, const char* name)
+thread_rename (struct thread *t, const char *name)
 {
   strlcpy (t->name, name, sizeof t->name);
 }
-
 
 struct thread
 *find_thread_by_id (tid_t id)
@@ -611,7 +611,8 @@ struct thread
   e = list_tail (&all_list);
   while ((e = list_prev (e)) != list_head (&all_list))
     {
-      t = list_entry (e, struct thread, allelem);
+      t = list_entry (e,
+      struct thread, allelem);
       if (t->tid == id && t->status != THREAD_DYING)
         return t;
     }

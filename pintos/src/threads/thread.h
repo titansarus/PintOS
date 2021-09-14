@@ -7,7 +7,6 @@
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
 
-
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -90,11 +89,10 @@ typedef int fid_t;
 
 
 struct t_args
-{
-  char* fn;
-  struct process_status* ps;
-};
-
+  {
+    char *fn;
+    struct process_status *ps;
+  };
 
 struct thread
   {
@@ -121,7 +119,7 @@ struct thread
     int next_fid;
 
     /* Thread's executable file */
-    struct file* exec_file;
+    struct file *exec_file;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -154,7 +152,8 @@ struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
 
-void thread_exit (void) NO_RETURN;
+void thread_exit (void)
+NO_RETURN;
 void thread_yield (void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
@@ -169,8 +168,7 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-void thread_rename (struct thread* , const char*);
-struct thread* find_thread_by_id(tid_t);
-
+void thread_rename (struct thread *, const char *);
+struct thread *find_thread_by_id (tid_t);
 
 #endif /* threads/thread.h */

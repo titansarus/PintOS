@@ -8,6 +8,6 @@
 
 void exception_init (void);
 void exception_print_stats (void);
-void exit(int);
+void exit (int);
 
 #endif /* userprog/exception.h */

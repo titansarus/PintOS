@@ -73,17 +73,17 @@ exception_print_stats (void)
 }
 
 /* Exit the current thread with exit code */
-void 
-exit(int exit_code)
+void
+exit (int exit_code)
 {
-    printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
-    #ifdef USERPROG
-    struct thread* t= thread_current ();
-    t->ps->exit_code = exit_code;
-    t->ps->is_exited = 1;
-    #endif
+  printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+#ifdef USERPROG
+  struct thread* t= thread_current ();
+  t->ps->exit_code = exit_code;
+  t->ps->is_exited = 1;
+#endif
 
-    thread_exit ();
+  thread_exit ();
 }
 
 /* Handler for an exception (probably) caused by a user process. */
@@ -102,27 +102,27 @@ kill (struct intr_frame *f)
      exception originated. */
   switch (f->cs)
     {
-    case SEL_UCSEG:
-      /* User's code segment, so it's a user exception, as we
-         expected.  Kill the user process.  */
-      printf ("%s: dying due to interrupt %#04x (%s).\n",
-              thread_name (), f->vec_no, intr_name (f->vec_no));
+      case SEL_UCSEG:
+        /* User's code segment, so it's a user exception, as we
+           expected.  Kill the user process.  */
+        printf ("%s: dying due to interrupt %#04x (%s).\n",
+                thread_name (), f->vec_no, intr_name (f->vec_no));
       intr_dump_frame (f);
       thread_exit ();
 
-    case SEL_KCSEG:
-      /* Kernel's code segment, which indicates a kernel bug.
-         Kernel code shouldn't throw exceptions.  (Page faults
-         may cause kernel exceptions--but they shouldn't arrive
-         here.)  Panic the kernel to make the point.  */
-      intr_dump_frame (f);
+      case SEL_KCSEG:
+        /* Kernel's code segment, which indicates a kernel bug.
+           Kernel code shouldn't throw exceptions.  (Page faults
+           may cause kernel exceptions--but they shouldn't arrive
+           here.)  Panic the kernel to make the point.  */
+        intr_dump_frame (f);
       PANIC ("Kernel bug - unexpected interrupt in kernel");
 
-    default:
-      /* Some other code segment?  Shouldn't happen.  Panic the
-         kernel. */
-      printf ("Interrupt %#04x (%s) in unknown segment %04x\n",
-             f->vec_no, intr_name (f->vec_no), f->cs);
+      default:
+        /* Some other code segment?  Shouldn't happen.  Panic the
+           kernel. */
+        printf ("Interrupt %#04x (%s) in unknown segment %04x\n",
+                f->vec_no, intr_name (f->vec_no), f->cs);
       thread_exit ();
     }
 }
@@ -167,8 +167,8 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
- /* if the page fault it caused by a write violation, exit the process*/
-  if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+  /* if the page fault it caused by a write violation, exit the process*/
+  if (fault_addr == NULL || !not_present || !is_user_vaddr (fault_addr))
     exit (-1);
 
 

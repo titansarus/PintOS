@@ -6,11 +6,11 @@
 
 /* An open file. */
 struct file
-  {
-    struct inode *inode;        /* File's inode. */
-    off_t pos;                  /* Current position. */
-    bool deny_write;            /* Has file_deny_write() been called? */
-  };
+{
+  struct inode *inode;        /* File's inode. */
+  off_t pos;                  /* Current position. */
+  bool deny_write;            /* Has file_deny_write() been called? */
+};
 
 /* Opens a file for the given INODE, of which it takes ownership,
    and returns the new file.  Returns a null pointer if an
@@ -168,7 +168,6 @@ file_tell (struct file *file)
   return file->pos;
 }
 
-
 void
 file_close_l (struct file *file)
 {
@@ -181,7 +180,7 @@ void
 file_seek_l (struct file *file, off_t size)
 {
   lock_acquire (&fs_lock);
-  file_seek (file,size);
+  file_seek (file, size);
   lock_release (&fs_lock);
 }
 
@@ -204,7 +203,7 @@ file_length_l (struct file *file)
 }
 
 off_t
-file_read_l (struct file *file, void * buffer, off_t size)
+file_read_l (struct file *file, void *buffer, off_t size)
 {
   lock_acquire (&fs_lock);
   off_t retval = file_read (file, buffer, size);
@@ -213,7 +212,7 @@ file_read_l (struct file *file, void * buffer, off_t size)
 }
 
 off_t
-file_write_l (struct file *file, const void * buffer, off_t size)
+file_write_l (struct file *file, const void *buffer, off_t size)
 {
   lock_acquire (&fs_lock);
   off_t retval = file_write (file, buffer, size);

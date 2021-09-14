@@ -24,7 +24,7 @@ filesys_init (bool format)
   inode_init ();
   free_map_init ();
 
-  lock_init(&fs_lock);
+  lock_init (&fs_lock);
 
   if (format)
     do_format ();
@@ -39,7 +39,7 @@ filesys_done (void)
 {
   free_map_close ();
 }
-
+
 /* Creates a file named NAME with the given INITIAL_SIZE.
    Returns true if successful, false otherwise.
    Fails if a file named NAME already exists,
@@ -91,7 +91,7 @@ filesys_remove (const char *name)
 
   return success;
 }
-
+
 /* Formats the file system. */
 static void
 do_format (void)
@@ -110,14 +110,14 @@ filesys_create_l (const char *name, off_t initial_size)
   bool retval = filesys_create (name, initial_size);
   lock_release (&fs_lock);
   return retval;
-  
+
 }
 struct file *
 filesys_open_l (const char *name)
 {
 
   lock_acquire (&fs_lock);
-  struct file * retval = filesys_open (name);
+  struct file *retval = filesys_open (name);
   lock_release (&fs_lock);
   return retval;
 }

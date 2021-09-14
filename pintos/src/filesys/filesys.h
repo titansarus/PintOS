@@ -13,7 +13,6 @@
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
 
-
 /* Block device that contains the file system. */
 struct block *fs_device;
 struct lock fs_lock;
@@ -26,7 +25,7 @@ bool filesys_remove (const char *name);
 
 /* thread safe abstraction over functions above (using fs_lock) */
 bool filesys_create_l (const char *, off_t);
-struct file * filesys_open_l (const char *);
+struct file *filesys_open_l (const char *);
 bool filesys_remove_l (const char *);
 
 #endif /* filesys/filesys.h */
