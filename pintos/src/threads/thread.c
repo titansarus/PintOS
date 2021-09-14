@@ -284,9 +284,9 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
   struct thread* cur = thread_current ();
-  decrease_rc(cur->ps);
 
   #ifdef USERPROG
+  decrease_rc(cur->ps);
   // /* free up the process_status of child threads if needed */
   // struct list *children = &cur->children;
   // for (struct list_elem *e = list_begin(children); e != list_end(children); e = list_next(e)) {
