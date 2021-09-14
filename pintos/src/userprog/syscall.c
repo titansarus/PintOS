@@ -183,25 +183,46 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
   else if (args[0] == SYS_WRITE)
     {
-      /* TODO: implement for all file descriptors */
-      fid_t fid = args[1];
-      const void *buffer = (void *) args[2];
-      unsigned size = args[3];
-      if (fid == STDOUT_FILENO)
-        {
-          putbuf ((const char *) args[2], size);          
-          f->eax = size;
-        }
-    }
-  else if (args[0] == SYS_READ)
-    {
-      /* TODO: implement for all file descrimtors */
       if (args[2] == NULL || !validate_addr (args[2]))
         {
           f->eax = -1;
           kill (-1);
         }
-      else if (args[2] < 1)
+      else if (args[3] < 1)
+          f->eax = 0;
+      else
+        {
+          fid_t fid = args[1];
+          const void *buffer = (void *) args[2];
+          unsigned size = args[3];
+          if (fid == STDOUT_FILENO)
+            {
+              putbuf ((const char *) args[2], size);
+              f->eax = size;
+            }
+          else if (fid == STDIN_FILENO)
+            {
+              f->eax = -1;
+              kill (-1);
+            }
+          else
+            {
+              struct file_descriptor *fd = get_file_descriptor (fid);
+              if (fd == NULL)
+                  f->eax = -1;
+              else
+                  f->eax = file_write (fd->file, buffer, size);
+            }
+        }
+    }
+  else if (args[0] == SYS_READ)
+    {
+      if (args[2] == NULL || !validate_addr (args[2]))
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else if (args[3] < 1)
           f->eax = 0;
       else
         {
@@ -227,12 +248,9 @@ syscall_handler (struct intr_frame *f UNUSED)
               if (fd == NULL)
                   f->eax = -1;
               else
-                {
                   f->eax = file_read (fd->file, buffer, size);
-                }
             }
         }
-
     }
   else if (args[0] == SYS_HALT)
     {
