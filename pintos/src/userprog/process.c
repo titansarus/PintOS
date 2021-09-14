@@ -33,6 +33,7 @@ init_process_status(struct process_status* ps)
   sema_init(&ps->ws,0);
   ps->rc=2;
   lock_init(&ps->rc_lock);
+  ps->already_waited=false;
 }
 
 
@@ -45,24 +46,32 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  struct process_status *ps = malloc (sizeof (struct process_status));
-  init_process_status(ps);
-  list_push_back (&(thread_current ()->children) , &ps->children_elem);
-  
-
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page (0);
+  if (fn_copy == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy, file_name, PGSIZE);
+  struct process_status *ps = malloc (sizeof (struct process_status));
+  init_process_status(ps);
+  
+  list_push_back (&(thread_current ()->children) , &ps->children_elem);
+  
+  struct t_args *targs = malloc (sizeof (struct t_args));
+  
+  //iftoff
   char *cmd = palloc_get_page (0);
   if (cmd == NULL)
     return TID_ERROR;
   strlcpy (cmd, file_name, PGSIZE);
-  
-  struct t_args *targs = malloc (sizeof (struct t_args));
+  //endtof
+
   targs->fn = cmd;
   targs->ps = ps;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, targs);
+  palloc_free_page (fn_copy);
   if (tid == TID_ERROR)
     {
       palloc_free_page (cmd);
@@ -73,11 +82,8 @@ process_execute (const char *file_name)
   sema_down(&ps->ws);
 
   if (ps->is_exited && ps->exit_code == -1)
-  {
-    list_remove(&ps->children_elem);
-    free(ps);
+    //todo: free child status
     return -1;
-  }
   
   return tid;
 }
@@ -223,15 +229,21 @@ process_wait (tid_t child_tid)
   struct process_status *child=find_child(thread_current(),child_tid);
 
   if(child==NULL)
+  {
     return -1;
-
+  }
+  if (child->already_waited)
+  {
+    list_remove(&child->children_elem);
+    free(child);
+    return -1;
+  }
+  
+  child->already_waited=true;
   sema_down(&child->ws);
   int exit_code=child->exit_code;
-
-  /* free up the child process_status */
-  list_remove(&child->children_elem);
-  free(child);
   
+  //TODO free child 
   return exit_code;
 }
 
@@ -276,7 +288,7 @@ process_exit (void)
     }
 
   /* Close executable file of thread. */
-  file_close_l(cur->exec_file);
+  file_close(cur->exec_file);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -385,7 +397,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open_l (file_name);
+  file = filesys_open (file_name);
   t->exec_file = file;
   if (file == NULL)
     {
