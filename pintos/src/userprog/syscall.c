@@ -102,7 +102,16 @@ syscall_handler (struct intr_frame *f UNUSED)
   else if (args[0] == SYS_EXEC)
     {
       if (!is_valid_string (args[1]))
-        f->eax = -1;
+        {
+          f->eax = -1;
+          printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+          #ifdef USERPROG
+          struct thread* t= thread_current ();
+          t->ps->exit_code = -1;
+          t->ps->is_exited = 1;
+          #endif
+          thread_exit ();
+        }
       else
         f->eax = process_execute ((char*) args[1]);
     }
