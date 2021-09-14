@@ -240,9 +240,208 @@ user mode page
 
 ۶.
 
+- `main`, `0xc000e000`
+
+- `idle`
+
+<div dir="ltr">
+
+```log
+pintos-debug: dumplist #0: 0xc000e000 {tid = 1, status = THREAD_RUNNING, name = "main", '\000' <repeats 11 times>, stack = 0xc000edec <incomplete sequence \357>, priority = 31, allelem = {prev =                                                                                                                                                                 0c0035910 <all_list>, next = 0xc0104020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+pintos-debug: dumplist #1: 0xc0104000 {tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, allelem = {prev = 0xc000e020                                                                                                                                                                               ,18 <all_list+8>}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+```
+
+</div>
+
 ۷.
 
+<div dir = "ltr">
+
+```log
+#0  process_execute (file_name=file_name@entry=0xc0007d50 "do-nothing") at ../../userprog/process.c:36
+#1  0xc0020268 in run_task (argv=0xc00357cc <argv+12>) at ../../threads/init.c:288
+#2  0xc0020921 in run_actions (argv=0xc00357cc <argv+12>) at ../../threads/init.c:340
+#3  main () at ../../threads/init.c:133
+```
+
+```c
+tid_t
+process_execute (const char *file_name)
+{
+  char *fn_copy;
+  tid_t tid;
+
+  sema_init (&temporary, 0);
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page (0);
+  if (fn_copy == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy, file_name, PGSIZE);
+
+  /* Create a new thread to execute FILE_NAME. */
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  if (tid == TID_ERROR)
+    palloc_free_page (fn_copy);
+  return tid;
+}
+```
+
+```c
+static void
+run_task (char **argv)
+{
+  const char *task = argv[1];
+
+  printf ("Executing '%s':\n", task);
+#ifdef USERPROG
+  process_wait (process_execute (task));
+#else
+  run_test (task);
+#endif
+  printf ("Execution of '%s' complete.\n", task);
+}
+
+```
+
+```c
+static void
+run_actions (char **argv)
+{
+  /* An action. */
+  struct action
+    {
+      char *name;                       /* Action name. */
+      int argc;                         /* # of args, including action name. */
+      void (*function) (char **argv);   /* Function to execute action. */
+    };
+
+  /* Table of supported actions. */
+  static const struct action actions[] =
+    {
+      {"run", 2, run_task},
+#ifdef FILESYS
+      {"ls", 1, fsutil_ls},
+      {"cat", 2, fsutil_cat},
+      {"rm", 2, fsutil_rm},
+      {"extract", 1, fsutil_extract},
+      {"append", 2, fsutil_append},
+#endif
+      {NULL, 0, NULL},
+    };
+
+  while (*argv != NULL)
+    {
+      const struct action *a;
+      int i;
+
+      /* Find action name. */
+      for (a = actions; ; a++)
+        if (a->name == NULL)
+          PANIC ("unknown action `%s' (use -h for help)", *argv);
+        else if (!strcmp (*argv, a->name))
+          break;
+
+      /* Check for required arguments. */
+      for (i = 1; i < a->argc; i++)
+        if (argv[i] == NULL)
+          PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
+
+      /* Invoke action and advance. */
+      a->function (argv);
+      argv += a->argc;
+    }
+
+}
+```
+
+
+```c
+int
+main (void)
+{
+  char **argv;
+
+  /* Clear BSS. */
+  bss_init ();
+
+  /* Break command line into arguments and parse options. */
+  argv = read_command_line ();
+  argv = parse_options (argv);
+
+  /* Initialize ourselves as a thread so we can use locks,
+     then enable console locking. */
+  thread_init ();
+  console_init ();
+
+  /* Greet user. */
+  printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
+          init_ram_pages * PGSIZE / 1024);
+
+  /* Initialize memory system. */
+  palloc_init (user_page_limit);
+  malloc_init ();
+  paging_init ();
+
+  /* Segmentation. */
+#ifdef USERPROG
+  tss_init ();
+  gdt_init ();
+#endif
+
+  /* Initialize interrupt handlers. */
+  intr_init ();
+  timer_init ();
+  kbd_init ();
+  input_init ();
+#ifdef USERPROG
+  exception_init ();
+  syscall_init ();
+#endif
+
+  /* Start thread scheduler and enable interrupts. */
+  thread_start ();
+  serial_init_queue ();
+  timer_calibrate ();
+
+#ifdef FILESYS
+  /* Initialize file system. */
+  ide_init ();
+  locate_block_devices ();
+  filesys_init (format_filesys);
+#endif
+
+  printf ("Boot complete.\n");
+
+  /* Run actions specified on kernel command line. */
+  run_actions (argv);
+
+  /* Finish up. */
+  shutdown ();
+  thread_exit ();
+}
+```
+
+</div>
+
 ۸.
+
+- `main`, `idle`, `do-nothing`
+
+<div dir="ltr">
+
+```log
+
+pintos-debug: dumplist #0: 0xc000e000 {tid = 1, status = THREAD_BLOCKED, name = "main", '\000' <repeats 11 times>, stack = 0xc000eeac "\001", priority = 31, allelem = {prev = 0xc0035910 <all_list>,
+ next = 0xc0104020}, elem = {prev = 0xc0037314 <temporary+4>, next = 0xc003731c <temporary+12>}, pagedir = 0x0, magic = 3446325067}
+pintos-debug: dumplist #1: 0xc0104000 {tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, allelem = {prev = 0xc000e020, next = 0xc010a0
+20}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+pintos-debug: dumplist #2: 0xc010a000 {tid = 3, status = THREAD_RUNNING, name = "do-nothing\000\000\000\000\000", stack = 0xc010afd4 "", priority = 31, allelem = {prev = 0xc0104020, next = 0xc00359
+18 <all_list+8>}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+
+```
+
+</div>
 
 ۹.
 
@@ -269,4 +468,4 @@ user mode page
 
 ۱۹.
 
-</>
+</div>
