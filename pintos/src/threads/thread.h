@@ -89,34 +89,12 @@ typedef int tid_t;
    blocked state is on a semaphore wait list. */
 
 
-struct process_status
+struct t_args
 {
-  /* tid of the curresponing process */
-  tid_t tid;
-  
-  int exit_code;
-  bool is_exited;
-
-  /* wait sema
-   * init to 0
-   * used for handling wait between parent and child thread
-   */
-  struct semaphore ws; 
-  
-  /* initially 2
-   * used for freeing resources 
-   * number of alive threads referencing to this status  
-   */
-  int rc;
-  
-  /* strictly for changing value of rc */
-  struct lock rc_lock;
-  
-  /* If parent already waited on this child once!  */
-  bool already_waited;
-
-  struct list_elem children_elem;
+  char* fn;
+  struct process_status* ps;
 };
+
 
 struct thread
   {
@@ -132,7 +110,6 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     /* status of process running by this thread */
-    struct process_status pss;
     struct process_status *ps;
 
     /* list of all the child threads */
@@ -159,7 +136,7 @@ void thread_start (void);
 void thread_tick (void);
 void thread_print_stats (void);
 
-typedef void thread_func (void *aux);
+typedef void thread_func (struct t_args *targs);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);

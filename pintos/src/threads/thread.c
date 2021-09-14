@@ -24,6 +24,7 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -471,16 +472,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   
-  t->ps = &t->pss;
-  t->ps->is_exited=false;
-  t->ps->tid=t->tid;
-  sema_init(&t->ps->ws,0);
-  t->ps->rc=2;
-  lock_init(&t->ps->rc_lock);
-  t->ps->already_waited=false;
-  
-  list_init(&t->children);
-
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

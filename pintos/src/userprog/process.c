@@ -18,10 +18,22 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+void
+init_process_status(struct process_status* ps)
+{
+  ps->is_exited=false;
+  sema_init(&ps->ws,0);
+  ps->rc=2;
+  lock_init(&ps->rc_lock);
+  ps->already_waited=false;
+}
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -41,16 +53,23 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy);
-
-  /* Add child thread status to the child status list of parent */
-  struct thread* child_thread = find_thread_by_id(tid);
-  list_push_back (&thread_current ()->children , &child_thread->ps->children_elem);
-  struct process_status* ps = child_thread ->ps;
+  struct process_status *ps = malloc (sizeof (struct process_status));
+  init_process_status(ps);
+  // list_push_back (&thread_current ()->children , &ps->children_elem);
   
+  struct t_args *targs = malloc (sizeof (struct t_args));
+  targs->fn = fn_copy;
+  targs->ps = ps;
+
+  /* Create a new thread to execute FILE_NAME. */
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, targs);
+  palloc_free_page (fn_copy);
+  if (tid == TID_ERROR)
+    {
+      free(ps);
+      return TID_ERROR;
+    }
+
   sema_down(&ps->ws);
   if (ps->is_exited && ps->exit_code == -1)
     //todo: free child status
@@ -103,9 +122,9 @@ push_args (char* cmd, int cmd_len, int argc, int* esp)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (struct t_args *targs)
 {
-  char *file_name = file_name_;
+  char *file_name = targs->fn;
   struct intr_frame if_;
   bool success;
 
@@ -130,6 +149,10 @@ start_process (void *file_name_)
 
   int argv = push_args (file_name, cmd_len, argc, &if_.esp);
 
+  t->ps = targs->ps;
+  t->ps->pid = t->tid;
+  // list_init(&t->children);
+  
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success){
