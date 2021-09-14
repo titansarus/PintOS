@@ -95,7 +95,8 @@ struct process_status
   tid_t tid;
   
   int exit_code;
-  
+  bool is_exited;
+
   /* wait sema
    * init to 0
    * used for handling wait between parent and child thread
@@ -130,15 +131,17 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* status of process running by this thread */
+    struct process_status pss;
+    struct process_status *ps;
+
+    /* list of all the child threads */
+    struct list children;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 
-    /* status of process running by this thread */
-    struct process_status *ps;
-
-    /* list of all the child threads */
-    struct list children_status;
 #endif
 
     /* Owned by thread.c. */
@@ -181,7 +184,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-void thread_rename (struct thread* t, const char* name);
+void thread_rename (struct thread* , const char*);
+struct thread* find_thread_by_id(tid);
 
 
 #endif /* threads/thread.h */

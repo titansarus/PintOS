@@ -282,6 +282,12 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
+  lock_acquire(&thread_current ()->ps->rc_lock);
+  thread_current ()->ps->rc--;
+  lock_release(&thread_current ()->ps->rc_lock);
+  
+
+
 #ifdef USERPROG
   process_exit ();
 #endif
@@ -464,6 +470,18 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+  
+  t->ps = &t->pss;
+  t->ps->is_exited=false;
+  t->ps->tid=t->tid;
+  sema_init(&t->ps->ws,0);
+  t->ps->rc=2;
+  lock_init(&t->ps->rc_lock);
+  t->ps->already_waited=false;
+  
+  list_init(&t->children);
+
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -589,4 +607,21 @@ void
 thread_rename (struct thread* t, const char* name)
 {
   strlcpy (t->name, name, sizeof t->name);
+}
+
+
+struct thread
+*find_thread_by_id (tid_t id)
+{
+  ASSERT (id != TID_ERROR);
+  struct list_elem *e;
+  struct thread *t;
+  e = list_tail (&all_list);
+  while ((e = list_prev (e)) != list_head (&all_list))
+    {
+      t = list_entry (e, struct thread, allelem);
+      if (t->tid == id && t->status != THREAD_DYING)
+        return t;
+    }
+  return NULL;
 }

@@ -84,6 +84,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       shutdown_power_off();
     }
+  else if (args[0] == SYS_EXEC)
+    {
+      f->eax=process_execute((char*) args[1]);
+    }
   else
     {
       f->eax = -1;

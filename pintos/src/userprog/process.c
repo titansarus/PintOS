@@ -45,6 +45,17 @@ process_execute (const char *file_name)
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+
+  /* Add child thread status to the child status list of parent */
+  struct thread* child_thread = find_thread_by_id(tid);
+  list_push_back (&thread_current ()->children , &child_thread->ps->children_elem);
+  struct process_status* ps = child_thread ->ps;
+  
+  sema_down(&ps->ws);
+  if (ps->is_exited && ps->exit_code == -1)
+    //todo: free child status
+    return -1;
+  
   return tid;
 }
 
@@ -114,16 +125,24 @@ start_process (void *file_name_)
 
   success = load (file_name, &if_.eip, &if_.esp);
   
-  thread_rename(thread_current(),file_name);
+  struct thread* t=thread_current ();
+  thread_rename (t,file_name);
 
   int argv = push_args (file_name, cmd_len, argc, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success)
+  if (!success){
+    t->ps->exit_code=-1;
+    t->ps->is_exited=true;
+    sema_up (&(t->ps->ws));
+    
     thread_exit ();
+  }
 
-  /* stask align */
+  sema_up (&(t->ps->ws));
+  
+  /* stack align */
   if_.esp -= ((int) ((unsigned int) (if_.esp) % 16) + 8);
   
   /* pushing argv and argc */
