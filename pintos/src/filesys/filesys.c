@@ -106,9 +106,9 @@ do_format (void)
 bool
 filesys_create_l (const char *name, off_t initial_size)
 {
-  lock_acquire (&fs_lock);
-  bool retval = filesys_create (name, initial_size);
-  lock_release (&fs_lock);
+  lock_acquire(&fs_lock);
+  bool retval=filesys_create(name,initial_size);
+  lock_release(&fs_lock);
   return retval;
   
 }
@@ -116,17 +116,17 @@ struct file *
 filesys_open_l (const char *name)
 {
 
-  lock_acquire (&fs_lock);
-  struct file * retval = filesys_open (name);
-  lock_release (&fs_lock);
+  lock_acquire(&fs_lock);
+  struct file * retval=filesys_open(name);
+  lock_release(&fs_lock);
   return retval;
 }
 bool
 filesys_remove_l (const char *name)
 {
 
-  lock_acquire (&fs_lock);
-  bool retval = filesys_remove (name);
-  lock_release (&fs_lock);
+  lock_acquire(&fs_lock);
+  bool retval=filesys_remove(name);
+  lock_release(&fs_lock);
   return retval;
 }

@@ -229,15 +229,21 @@ process_wait (tid_t child_tid)
   struct process_status *child=find_child(thread_current(),child_tid);
 
   if(child==NULL)
+  {
     return -1;
-
+  }
+  if (child->already_waited)
+  {
+    list_remove(&child->children_elem);
+    free(child);
+    return -1;
+  }
+  
+  child->already_waited=true;
   sema_down(&child->ws);
   int exit_code=child->exit_code;
-
-  /* free up the child process_status */
-  list_remove(&child->children_elem);
-  free(child);
   
+  //TODO free child 
   return exit_code;
 }
 
