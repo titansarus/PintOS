@@ -163,6 +163,22 @@ syscall_handler (struct intr_frame *f UNUSED)
             }
         }
     }
+  else if (args[0] == SYS_FILESIZE)
+    {
+      if (args[1] < 2)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          struct file_descriptor *fd = get_file_descriptor (args[1]);
+          if (fd == NULL)
+            f->eax = -1;
+          else
+            f->eax = file_length (fd->file);
+        }
+    }
   else if (args[0] == SYS_WRITE)
     {
       /* TODO: implement for all file descriptors */
