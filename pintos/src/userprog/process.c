@@ -620,7 +620,7 @@ install_page (void *upage, void *kpage, bool writable)
 void
 decrease_rc (struct process_status* ps)
 {
-  lock_acquire(&thread_current ()->ps->rc_lock);
-  thread_current ()->ps->rc--;
-  lock_release(&thread_current ()->ps->rc_lock);
+  lock_acquire(&ps->rc_lock);
+  ps->rc--;
+  lock_release(&ps->rc_lock);
 }

@@ -283,7 +283,7 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-  decrease_rc(&thread_current ()->ps);
+  decrease_rc(thread_current ()->ps);
 
 
 #ifdef USERPROG
