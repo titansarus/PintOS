@@ -49,16 +49,16 @@ process_execute (const char *file_name)
 }
 
 
-int push_args (const char* argv, int len, int argc, int* esp){
-  // size_t len = strnlen (argv, -vtop (argv));
-  // if (len == -vtop (argv)){
+int push_args (const char* command, int len, int argc, int* esp){
+  // size_t len = strnlen (command, -vtop (command));
+  // if (len == -vtop (command)){
   //   return -1;
   // }
   
   
-  /* pushing argv's content */
+  /* pushing command's content */
   *esp -= len + 1;
-  memcpy (*esp, argv, len + 1);
+  memcpy (*esp, command, len + 1);
   int argv_offset =* esp;
 
   /* stack align */
@@ -72,7 +72,7 @@ int push_args (const char* argv, int len, int argc, int* esp){
 
   /* pushing argv */
   *esp -= 4 * argc;
-  char* arg = argv;
+  char* arg = command;
   for (int i = 0; i < argc; i++)
   {
     *((int*) (*esp)) = argv_offset;
