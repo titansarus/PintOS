@@ -486,6 +486,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   /* 0 and 1 for stdin and stdout */
   t->next_fid = 2;
+  
+  //iftof-temporary
+  memset(&(t->fd_list),0,sizeof(struct list));
+  list_init(&t->fd_list);
+  //endtof
+  
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

@@ -52,12 +52,6 @@ static int create_fd(struct file *file_) {
   #ifdef USERPROG
     struct thread *t = thread_current ();
     struct file_descriptor *fd = malloc (sizeof (struct file_descriptor));
-    //iftof
-    if (t->next_fid ==2){
-        memset(&(thread_current()->fd_list),0,sizeof(struct list));
-        list_init(&thread_current ()->fd_list);
-    }
-    //endtof
     fd->file = file_;
     fd->fid = t->next_fid++;
     list_push_back (&t->fd_list, &fd->fd_elem);
@@ -65,6 +59,24 @@ static int create_fd(struct file *file_) {
   #endif
 }
 
+struct file_descriptor *get_file_descriptor (fid_t fid)
+{
+  #ifdef USERPROG
+    struct list *list_ = &thread_current ()->fd_list;
+
+    if (list_empty(list_))
+        return NULL;
+
+    struct list_elem *elem = list_begin (list_);
+    for (; elem != list_end (list_); elem = list_next (elem))
+      {
+        struct file_descriptor *fd = list_entry (elem, struct file_descriptor, fd_elem);
+        if (fd->fid == fid)
+          return fd;
+      }
+    return NULL;
+  #endif
+}
 
 static void
 syscall_handler (struct intr_frame *f UNUSED)
@@ -129,6 +141,27 @@ syscall_handler (struct intr_frame *f UNUSED)
         else
           f->eax = create_fd(file_);
       }
+    }
+  else if (args[0] == SYS_CLOSE)
+    {
+      if (args[1] < 2)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          struct file_descriptor *fd = get_file_descriptor (args[1]);
+          if (fd == NULL)
+              f->eax = -1;
+          else
+            {
+              file_close (fd->file);
+              list_remove (&fd->fd_elem);
+              free (fd);
+              f->eax = 0;
+            }
+        }
     }
   else if (args[0] == SYS_WRITE)
     {
