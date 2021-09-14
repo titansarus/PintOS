@@ -50,4 +50,7 @@ int inumber (int fd);
 /* Homework 5, Part B. */
 void* sbrk (intptr_t increment);
 
+/* cache specification syscall*/
+int cache_spec (uint32_t flag);
+
 #endif /* lib/user/syscall.h */

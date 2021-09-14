@@ -197,3 +197,9 @@ sbrk (intptr_t increment)
   /* Homework 5, Part B: YOUR CODE HERE */
   return NULL;
 }
+
+int
+cache_spec (uint32_t flag)
+{
+  return syscall1 (SYS_CACHE_SPEC, flag);
+}
