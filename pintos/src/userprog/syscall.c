@@ -20,6 +20,11 @@ validate_arg (void *arg)
   return arg != NULL && is_user_vaddr (ptr) && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
 }
 
+bool is_valid_string (char *ustr) {
+    char *kstr = pagedir_get_page (thread_current ()->pagedir, ustr);
+    return kstr != NULL && validate_arg (ustr + strlen (kstr) + 1);
+}
+
 void
 syscall_init (void)
 {
@@ -56,7 +61,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       t->ps->exit_code = args[1];
       t->ps->is_exited = 1;
       #endif
-      
+
       thread_exit ();
     }
   else if (args[0] == SYS_PRACTICE)
@@ -96,7 +101,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
   else if (args[0] == SYS_EXEC)
     {
-      f->eax=process_execute((char*) args[1]);
+      if (!is_valid_string (args[1]))
+        f->eax = -1;
+      else
+        f->eax = process_execute ((char*) args[1]);
     }
   else if (args[0] == SYS_WAIT)
     {
