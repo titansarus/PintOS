@@ -1,15 +1,15 @@
 #include "filesys/fsutil.h"
-#include <debug.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ustar.h>
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
+#include <debug.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ustar.h>
 
 /* List files in the root directory. */
 void
@@ -101,7 +101,7 @@ fsutil_extract (char **argv UNUSED)
       block_read (src, sector++, header);
       error = ustar_parse_header (header, &file_name, &type, &size);
       if (error != NULL)
-        PANIC ("bad ustar header in sector %"PRDSNu" (%s)", sector - 1, error);
+        PANIC ("bad ustar header in sector %" PRDSNu " (%s)", sector - 1, error);
 
       if (type == USTAR_EOF)
         {
@@ -127,8 +127,8 @@ fsutil_extract (char **argv UNUSED)
           while (size > 0)
             {
               int chunk_size = (size > BLOCK_SECTOR_SIZE
-                                ? BLOCK_SECTOR_SIZE
-                                : size);
+                                  ? BLOCK_SECTOR_SIZE
+                                  : size);
               block_read (src, sector++, data);
               if (file_write (dst, data, chunk_size) != chunk_size)
                 PANIC ("%s: write failed with %d bytes unwritten",
@@ -203,7 +203,7 @@ fsutil_append (char **argv)
       if (sector >= block_size (dst))
         PANIC ("%s: out of space on scratch device", file_name);
       if (file_read (src, buffer, chunk_size) != chunk_size)
-        PANIC ("%s: read failed with %"PROTd" bytes unread", file_name, size);
+        PANIC ("%s: read failed with %" PROTd " bytes unread", file_name, size);
       memset (buffer + chunk_size, 0, BLOCK_SECTOR_SIZE - chunk_size);
       block_write (dst, sector++, buffer);
       size -= chunk_size;

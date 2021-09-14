@@ -1,9 +1,9 @@
 #ifndef FILESYS_FREE_MAP_H
 #define FILESYS_FREE_MAP_H
 
+#include "devices/block.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include "devices/block.h"
 
 void free_map_init (void);
 void free_map_read (void);

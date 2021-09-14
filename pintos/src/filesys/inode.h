@@ -1,9 +1,9 @@
 #ifndef FILESYS_INODE_H
 #define FILESYS_INODE_H
 
-#include <stdbool.h>
-#include "filesys/off_t.h"
 #include "devices/block.h"
+#include "filesys/off_t.h"
+#include <stdbool.h>
 
 struct bitmap;
 
@@ -21,7 +21,7 @@ void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
 bool inode_is_dir (const struct inode *);
 bool inode_is_removed (const struct inode *);
-struct inode_disk * get_inode_disk (const struct inode *);
+struct inode_disk *get_inode_disk (const struct inode *);
 block_sector_t inode_get_inumber (const struct inode *);
 
 #endif /* filesys/inode.h */

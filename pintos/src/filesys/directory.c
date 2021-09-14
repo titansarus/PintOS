@@ -1,27 +1,25 @@
 #include "filesys/directory.h"
-#include <stdio.h>
-#include <string.h>
-#include <list.h>
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include <list.h>
+#include <stdio.h>
+#include <string.h>
 
 /* A directory. */
-struct dir
-  {
-    struct inode *inode;                /* Backing store. */
-    off_t pos;                          /* Current position. */
-  };
+struct dir {
+  struct inode *inode; /* Backing store. */
+  off_t pos;           /* Current position. */
+};
 
 /* A single directory entry. */
-struct dir_entry
-  {
-    block_sector_t inode_sector;        /* Sector number of header. */
-    char name[NAME_MAX + 1];            /* Null terminated file name. */
-    bool in_use;                        /* In use or free? */
-  };
+struct dir_entry {
+  block_sector_t inode_sector; /* Sector number of header. */
+  char name[NAME_MAX + 1];     /* Null terminated file name. */
+  bool in_use;                 /* In use or free? */
+};
 
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
@@ -223,7 +221,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector, bool is
   e.inode_sector = inode_sector;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
- done:
+done:
   return success;
 }
 
@@ -249,26 +247,26 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
-  else if (inode_is_dir(inode))
-  {
-    struct dir *dir_remove = dir_open(inode);
-    struct dir_entry e_remove;
-    off_t ofs_remove;
+  else if (inode_is_dir (inode))
+    {
+      struct dir *dir_remove = dir_open (inode);
+      struct dir_entry e_remove;
+      off_t ofs_remove;
 
-    bool empty = true;
-    for (ofs_remove = sizeof e_remove;
-        inode_read_at (dir_remove->inode, &e_remove, sizeof e_remove, ofs_remove) == sizeof e_remove;
-        ofs_remove += sizeof e_remove)
-      if (e_remove.in_use)
-        {
-          empty = false;
-          break;
-        }
-    dir_close(dir_remove);
+      bool empty = true;
+      for (ofs_remove = sizeof e_remove;
+           inode_read_at (dir_remove->inode, &e_remove, sizeof e_remove, ofs_remove) == sizeof e_remove;
+           ofs_remove += sizeof e_remove)
+        if (e_remove.in_use)
+          {
+            empty = false;
+            break;
+          }
+      dir_close (dir_remove);
 
-    if (!empty)
-      goto done;
-  }
+      if (!empty)
+        goto done;
+    }
 
   /* Erase directory entry. */
   e.in_use = false;
@@ -279,7 +277,7 @@ dir_remove (struct dir *dir, const char *name)
   inode_remove (inode);
   success = true;
 
- done:
+done:
   inode_close (inode);
   return success;
 }
@@ -306,29 +304,36 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 
 /* Extracts directory and filename from path.*/
 bool
-split_path (const char *path, char *directory, char *filename){
-  filename[0]=0;
-  directory[0]=0;
-  if(strlen(path)==0)return false;
+split_path (const char *path, char *directory, char *filename)
+{
+  filename[0] = 0;
+  directory[0] = 0;
+  if (strlen (path) == 0)
+    return false;
 
-  for(int i=strlen(path)-1;i>=0;i--){
+  for (int i = strlen (path) - 1; i >= 0; i--)
+    {
 
-    if(path[i]!='/') continue;
-      
-    if(strlen(path)-i-1>NAME_MAX)return false;
-    memcpy(filename,path+i+1,strlen(path)-i-1);
-    filename[strlen(path)-i-1]='\0';
+      if (path[i] != '/')
+        continue;
 
-    while(path[i-1]=='/')i--;
-    memcpy(directory,path,i+1);
-    directory[i+1]='\0';
-    
-    return true;
-  }
+      if (strlen (path) - i - 1 > NAME_MAX)
+        return false;
+      memcpy (filename, path + i + 1, strlen (path) - i - 1);
+      filename[strlen (path) - i - 1] = '\0';
 
-  if(strlen(path)>NAME_MAX)return false;
-  memcpy(filename,path,strlen(path));
-  filename[strlen(path)]='\0';
+      while (path[i - 1] == '/')
+        i--;
+      memcpy (directory, path, i + 1);
+      directory[i + 1] = '\0';
+
+      return true;
+    }
+
+  if (strlen (path) > NAME_MAX)
+    return false;
+  memcpy (filename, path, strlen (path));
+  filename[strlen (path)] = '\0';
   return true;
 }
 
@@ -347,17 +352,18 @@ dir_open_path (const char *path)
     curr_dir = dir_reopen (curr_thread->working_dir);
 
   // safe const copy of path, to tokenize
-  size_t cpl = strlen(path) + 1;
+  size_t cpl = strlen (path) + 1;
   char const_path[cpl];
-  memcpy(const_path, path, cpl);
+  memcpy (const_path, path, cpl);
 
-  // iterating throgh path 
+  // iterating throgh path
   char *dir_token, *save_ptr;
-  for (dir_token = strtok_r(const_path, "/", &save_ptr); dir_token != NULL;
-       dir_token = strtok_r(NULL, "/", &save_ptr))
-  {
-      
-      if (strlen(dir_token) > NAME_MAX) break;
+  for (dir_token = strtok_r (const_path, "/", &save_ptr); dir_token != NULL;
+       dir_token = strtok_r (NULL, "/", &save_ptr))
+    {
+
+      if (strlen (dir_token) > NAME_MAX)
+        break;
 
       /* Lookup directory from current path */
       struct inode *next_inode;

@@ -1,16 +1,16 @@
 #ifndef FILESYS_FILESYS_H
 #define FILESYS_FILESYS_H
 
-#include <stdbool.h>
 #include "filesys/off_t.h"
 #include "threads/synch.h"
+#include <stdbool.h>
 
 /* Sectors of system file inodes. */
-#define FREE_MAP_SECTOR 0       /* Free map file inode sector. */
-#define ROOT_DIR_SECTOR 1       /* Root directory file inode sector. */
+#define FREE_MAP_SECTOR 0 /* Free map file inode sector. */
+#define ROOT_DIR_SECTOR 1 /* Root directory file inode sector. */
 
 /* reserved file ids */
-#define STDIN_FILENO  0
+#define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 
 /* Block device that contains the file system. */

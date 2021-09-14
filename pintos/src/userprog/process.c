@@ -1,27 +1,27 @@
 #include "userprog/process.h"
-#include <debug.h>
-#include <inttypes.h>
-#include <round.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "userprog/gdt.h"
-#include "userprog/pagedir.h"
-#include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "threads/malloc.h"
+#include "userprog/gdt.h"
+#include "userprog/pagedir.h"
+#include "userprog/tss.h"
+#include <debug.h>
+#include <inttypes.h>
+#include <round.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static thread_func start_process
-NO_RETURN;
+  NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void free_children (struct thread *);
 static void free_fds (struct thread *);
@@ -121,7 +121,6 @@ push_args (char *cmd, int cmd_len, int argc, int *esp)
 
   *esp -= 4 * (argc);
   return *esp;
-
 }
 
 /* A thread function that loads a user process and starts it
@@ -188,25 +187,28 @@ start_process (struct t_args *targs)
   /* Pushing a fake return address */
   if_.esp -= 4;
 
-
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  asm volatile("movl %0, %%esp; jmp intr_exit"
+               :
+               : "g"(&if_)
+               : "memory");
   NOT_REACHED ();
 }
 
-struct process_status *find_child (struct thread *t, tid_t child_pid)
+struct process_status *
+find_child (struct thread *t, tid_t child_pid)
 {
   struct process_status *result = NULL;
   struct list *children = &t->children;
   for (struct list_elem *e = list_begin (children); e != list_end (children); e = list_next (e))
     {
       struct process_status *current_child = list_entry (e,
-      struct process_status, children_elem);
+                                                         struct process_status, children_elem);
       if (current_child->pid == child_pid)
         {
           result = current_child;
@@ -311,15 +313,14 @@ typedef uint32_t Elf32_Word, Elf32_Addr, Elf32_Off;
 typedef uint16_t Elf32_Half;
 
 /* For use with ELF types in printf(). */
-#define PE32Wx PRIx32   /* Print Elf32_Word in hexadecimal. */
-#define PE32Ax PRIx32   /* Print Elf32_Addr in hexadecimal. */
-#define PE32Ox PRIx32   /* Print Elf32_Off in hexadecimal. */
-#define PE32Hx PRIx16   /* Print Elf32_Half in hexadecimal. */
+#define PE32Wx PRIx32 /* Print Elf32_Word in hexadecimal. */
+#define PE32Ax PRIx32 /* Print Elf32_Addr in hexadecimal. */
+#define PE32Ox PRIx32 /* Print Elf32_Off in hexadecimal. */
+#define PE32Hx PRIx16 /* Print Elf32_Half in hexadecimal. */
 
 /* Executable header.  See [ELF1] 1-4 to 1-8.
    This appears at the very beginning of an ELF binary. */
-struct Elf32_Ehdr
-{
+struct Elf32_Ehdr {
   unsigned char e_ident[16];
   Elf32_Half e_type;
   Elf32_Half e_machine;
@@ -339,8 +340,7 @@ struct Elf32_Ehdr
 /* Program header.  See [ELF1] 2-2 to 2-4.
    There are e_phnum of these, starting at file offset e_phoff
    (see [ELF1] 1-6). */
-struct Elf32_Phdr
-{
+struct Elf32_Phdr {
   Elf32_Word p_type;
   Elf32_Off p_offset;
   Elf32_Addr p_vaddr;
@@ -352,19 +352,19 @@ struct Elf32_Phdr
 };
 
 /* Values for p_type.  See [ELF1] 2-3. */
-#define PT_NULL    0            /* Ignore. */
-#define PT_LOAD    1            /* Loadable segment. */
-#define PT_DYNAMIC 2            /* Dynamic linking info. */
-#define PT_INTERP  3            /* Name of dynamic loader. */
-#define PT_NOTE    4            /* Auxiliary info. */
-#define PT_SHLIB   5            /* Reserved. */
-#define PT_PHDR    6            /* Program header table. */
-#define PT_STACK   0x6474e551   /* Stack segment. */
+#define PT_NULL 0           /* Ignore. */
+#define PT_LOAD 1           /* Loadable segment. */
+#define PT_DYNAMIC 2        /* Dynamic linking info. */
+#define PT_INTERP 3         /* Name of dynamic loader. */
+#define PT_NOTE 4           /* Auxiliary info. */
+#define PT_SHLIB 5          /* Reserved. */
+#define PT_PHDR 6           /* Program header table. */
+#define PT_STACK 0x6474e551 /* Stack segment. */
 
 /* Flags for p_flags.  See [ELF3] 2-3 and 2-4. */
-#define PF_X 1          /* Executable. */
-#define PF_W 2          /* Writable. */
-#define PF_R 4          /* Readable. */
+#define PF_X 1 /* Executable. */
+#define PF_W 2 /* Writable. */
+#define PF_R 4 /* Readable. */
 
 static bool setup_stack (void **esp);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
@@ -441,7 +441,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
             break;
           case PT_DYNAMIC:
           case PT_INTERP:
-          case PT_SHLIB:goto done;
+          case PT_SHLIB: goto done;
           case PT_LOAD:
             if (validate_segment (&phdr, file))
               {
@@ -471,7 +471,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
               }
             else
               goto done;
-          break;
+            break;
         }
     }
 
@@ -484,7 +484,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   success = true;
 
-  done:
+done:
   /* We arrive here whether the load is successful or not. */
   return success;
 }
@@ -653,7 +653,7 @@ free_children (struct thread *cur)
   for (struct list_elem *e = list_begin (children); e != list_end (children); e = list_next (e))
     {
       struct process_status *current_child = list_entry (e,
-      struct process_status, children_elem);
+                                                         struct process_status, children_elem);
       if (current_child->rc == 1)
         {
           e = list_remove (&current_child->children_elem)->prev;
@@ -670,7 +670,7 @@ free_fds (struct thread *cur)
   for (struct list_elem *e = list_begin (fd_list); e != list_end (fd_list); e = list_next (e))
     {
       struct file_descriptor *fd = list_entry (e,
-      struct file_descriptor, fd_elem);
+                                               struct file_descriptor, fd_elem);
       e = list_remove (&fd->fd_elem)->prev;
       file_close (fd->file);
       free (fd);
