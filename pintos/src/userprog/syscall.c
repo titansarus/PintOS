@@ -8,8 +8,8 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/directory.h"
-#include "userprog/exception.h"
 #ifdef USERPROG
+#include "userprog/exception.h"
 #include "userprog/process.h"
 #endif
 

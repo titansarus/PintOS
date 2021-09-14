@@ -4,6 +4,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -166,11 +167,8 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
  /* if the page fault it caused by a write violation, exit the process*/
-//   if (!not_present)
-//     exit (-1);
-  
-//   if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
-//     exit (-1);
+  if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+    exit (-1);
 
 
   /* To implement virtual memory, delete the rest of the function
