@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/directory.h"
@@ -12,8 +13,12 @@
 #include "userprog/process.h"
 #endif
 
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
 
 static void syscall_handler (struct intr_frame *);
+
+static struct lock fs_lock;
 
 /* Validate arguments for all syscalls */
 static bool
@@ -34,6 +39,7 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init(&fs_lock);
 }
 
 
@@ -170,29 +176,117 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
   else if (args[0] == SYS_WRITE)
     {
-      /* TODO: implement for all file descriptors */
-      int fd = args[1];
-      const void *buffer = (void *) args[2];
-      unsigned size = args[3];
-      if (fd == 1)
+      if (args[2] == NULL || !validate_addr (args[2]))
         {
-          putbuf ((const char *) args[2], size);          
-          f->eax = size;
+          f->eax = -1;
+          kill (-1);
+        }
+      else if (args[3] < 1)
+          f->eax = 0;
+      else
+        {
+          fid_t fid = args[1];
+          const void *buffer = (void *) args[2];
+          unsigned size = args[3];
+
+          lock_acquire (&fs_lock);
+
+          if (fid == STDOUT_FILENO)
+            {
+              putbuf ((const char *) args[2], size);
+              f->eax = size;
+            }
+          else if (fid == STDIN_FILENO)
+            {
+              f->eax = -1;
+              kill (-1);
+            }
+          else
+            {
+              struct file_descriptor *fd = get_file_descriptor (fid);
+              if (fd == NULL)
+                  f->eax = -1;
+              else
+                  f->eax = file_write (fd->file, buffer, size);
+            }
+          
+          lock_release (&fs_lock);
         }
     }
   else if (args[0] == SYS_READ)
     {
-      /* TODO: implement for all file descrimtors */
-      int fd = args[1];
-      uint8_t *buffer = (uint8_t *) args[2];
-      unsigned size = args[3];
-      if (fd == 0)
+      if (args[2] == NULL || !validate_addr (args[2]))
         {
-          for (unsigned i = 0; i < size; i++)
+          f->eax = -1;
+          kill (-1);
+        }
+      else if (args[3] < 1)
+          f->eax = 0;
+      else
+        {
+          fid_t fid = args[1];
+          uint8_t *buffer = (uint8_t *) args[2];
+          unsigned size = args[3];
+
+          lock_acquire (&fs_lock);
+          
+          if (fid == STDIN_FILENO)
             {
-              buffer[i] = input_getc ();
+              for (unsigned i = 0; i < size; i++)
+                {
+                  buffer[i] = input_getc ();
+                }
+              f->eax = size;
             }
-          f->eax = size;
+          else if (fid == STDOUT_FILENO)
+            {
+              f->eax = -1;
+              kill (-1);
+            }
+          else
+            {
+              struct file_descriptor *fd = get_file_descriptor (fid);
+              if (fd == NULL)
+                  f->eax = -1;
+              else
+                  f->eax = file_read (fd->file, buffer, size);
+            }
+          lock_release (&fs_lock);
+
+        }
+    }
+  else if (args[0] == SYS_SEEK)
+    {
+      if (args[1] < 2 || args[2] < 0)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          fid_t fid = args[1];
+          unsigned position = args[2];
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd != NULL)
+              file_seek (fd->file, position);
+        }
+    }
+  else if (args[0] == SYS_TELL)
+    {
+      if (args[1] < 2)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          fid_t fid = args[1];
+          unsigned position = args[2];
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd == NULL)
+              f->eax = -1;
+          else
+              f->eax = file_tell (fd->file);
         }
     }
   else if (args[0] == SYS_HALT)

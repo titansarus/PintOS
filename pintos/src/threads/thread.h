@@ -121,6 +121,9 @@ struct thread
     /* id of next file id. Initially 2 */
     int next_fid;
 
+    /* Thread's executable file */
+    struct file* exec_file;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
