@@ -115,7 +115,7 @@ start_process (void *file_name_)
     thread_exit ();
 
   /* stask align */
-  if_.esp -=(unsigned int)(if_.esp) % 16;
+  if_.esp -= (unsigned int)(if_.esp) % 16 - 8;
   
   /* pushing argv and argc */
   if_.esp -= 8;
