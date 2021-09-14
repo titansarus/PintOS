@@ -14,6 +14,21 @@
 #endif
 
 static void syscall_handler (struct intr_frame *);
+static int create_fd(struct file *);
+struct file_descriptor *get_file_descriptor (fid_t);
+static void sys_exit (struct intr_frame *, uint32_t);
+static void sys_practice (struct intr_frame *, uint32_t);
+static void sys_create (struct intr_frame *, const char *, off_t);
+static void sys_remove (struct intr_frame *, const char *);
+static void sys_open (struct intr_frame *, const char *);
+static void sys_close (struct intr_frame *, fid_t);
+static void sys_filesize (struct intr_frame *, fid_t);
+static void sys_write (struct intr_frame *, fid_t, const char *, unsigned);
+static unsigned inputbuf (char *, unsigned);
+static void sys_read (struct intr_frame *, fid_t, char *, unsigned);
+static void sys_seek (fid_t, unsigned);
+static void sys_tell (struct intr_frame *, fid_t);
+static void sys_exec (struct intr_frame *, char *);
 
 /* Validate arguments for all syscalls */
 static bool
@@ -34,6 +49,74 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+}
+
+static void
+syscall_handler (struct intr_frame *f)
+{
+  uint32_t* args = ((uint32_t*) f->esp);
+
+  if (!validate_addr (args) || !validate_addr (args + 1) || !validate_addr (args + 2) || !validate_addr (args + 3))
+      sys_exit (f, -1);
+
+  uint32_t syscall_code = args[0];
+
+  /*
+   * The following print statement, if uncommented, will print out the syscall
+   * number whenever a process enters a system call. You might find it useful
+   * when debugging. It will cause tests to fail, however, so you should not
+   * include it in your final submission.
+   */
+
+  /* printf("System call number: %d\n", args[0]); */
+
+  switch (syscall_code)
+  {
+  case SYS_EXIT:
+    sys_exit (f, args[1]);
+    break;
+  case SYS_PRACTICE:
+    sys_practice (f, args[1]);
+    break;
+  case SYS_CREATE:
+    sys_create (f, (char *) args[1], args[2]);
+    break;
+  case SYS_REMOVE:
+    sys_remove (f, (char *) args[1]);
+    break;
+  case SYS_OPEN:
+    sys_open (f, (char*) args[1]);
+    break;
+  case SYS_CLOSE:
+    sys_close (f, (fid_t) args[1]);
+    break;
+  case SYS_FILESIZE:
+    sys_filesize (f, (fid_t) args[1]);
+    break;
+  case SYS_WRITE:
+    sys_write (f, (fid_t) args[1], (char *) args[2], (unsigned) args[3]);
+    break;
+  case SYS_READ:
+    sys_read (f, (fid_t) args[1], (char *) args[2], (unsigned) args[3]);
+    break;
+  case SYS_SEEK:
+    sys_seek ((fid_t) args[1], (unsigned) args[2]);
+    break;
+  case SYS_TELL:
+    sys_tell (f, (fid_t) args[1]);
+    break;
+  case SYS_HALT:
+    shutdown_power_off ();
+    break;
+  case SYS_EXEC:
+    sys_exec (f, (char*) args[1]);
+    break;
+  case SYS_WAIT:
+    f->eax = process_wait((tid_t) args[1]);
+    break;
+  default:
+    sys_exit (f, args[1]);
+  }
 }
 
 
@@ -68,253 +151,182 @@ struct file_descriptor *get_file_descriptor (fid_t fid)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED)
+sys_exit (struct intr_frame *f, uint32_t code)
 {
-  uint32_t* args = ((uint32_t*) f->esp);
+  f->eax = code;
+  exit (code);
+}
 
-  if (!validate_addr (args) || !validate_addr (args + 1) || !validate_addr (args + 2) || !validate_addr (args + 3))
-    {
-      f->eax = -1;
-      exit (-1);
-    }
+static void
+sys_practice (struct intr_frame *f, uint32_t input)
+{
+  f->eax = input + 1;
+}
 
-  /*
-   * The following print statement, if uncommented, will print out the syscall
-   * number whenever a process enters a system call. You might find it useful
-   * when debugging. It will cause tests to fail, however, so you should not
-   * include it in your final submission.
-   */
+static void
+sys_create (struct intr_frame *f, const char *file_name, off_t initial_size)
+{
+  if (!validate_addr (file_name))
+      sys_exit (f, -1);
+  else
+      f->eax = filesys_create_l (file_name, initial_size);
+}
 
-  /* printf("System call number: %d\n", args[0]); */
+static void
+sys_remove (struct intr_frame *f, const char *file_name)
+{
+  if (!validate_addr (file_name))
+      sys_exit (f, -1);
+  else
+      f->eax = filesys_remove_l (file_name);
+}
 
-  if (args[0] == SYS_EXIT)
+static void
+sys_open (struct intr_frame *f, const char *file_name)
+{
+  if (!validate_addr (file_name))
+      sys_exit (f, -1);
+  else 
     {
-      f->eax = args[1];
-      exit (args[1]);
-    }
-  else if (args[0] == SYS_PRACTICE)
-    {
-      f->eax = args[1] + 1;
-    }
-  else if (args[0] == SYS_CREATE)
-    {
-      if (args[1] == NULL || !validate_addr (args[1]))
-        {
+      struct file* file_ = filesys_open_l (file_name);
+      if (file_ == NULL)
           f->eax = -1;
-          exit (-1);
-        }
       else
-        {
-          f->eax = filesys_create_l ((char *) args[1], args[2]);
-        }
+          f->eax = create_fd (file_);
     }
-  else if (args[0] == SYS_REMOVE)
-    {
-      if (args[1] == NULL || !validate_addr (args[1]))
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        {
-          f->eax = filesys_remove_l ((char *) args[1]);
-        }
-    }
-  else if (args[0] == SYS_OPEN)
-    {
-      if (args[1] == NULL || !validate_addr (args[1]))
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else {
-        struct file* file_ = filesys_open_l((char*) args[1]);
-        if (file_ == NULL)
-          f->eax = -1;
-        else
-          f->eax = create_fd(file_);
-      }
-    }
-  else if (args[0] == SYS_CLOSE)
-    {
-      if (args[1] < 2)
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        {
-          struct file_descriptor *fd = get_file_descriptor (args[1]);
-          if (fd == NULL)
-              f->eax = -1;
-          else
-            {
-              file_close_l(fd->file);
-              list_remove (&fd->fd_elem);
-              free (fd);
-              f->eax = 0;
-            }
-        }
-    }
-  else if (args[0] == SYS_FILESIZE)
-    {
-      if (args[1] < 2)
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        {
-          struct file_descriptor *fd = get_file_descriptor (args[1]);
-          if (fd == NULL)
-            f->eax = -1;
-          else
-            {
+}
 
-              f->eax = file_length_l (fd->file);
-            }
-        }
-    }
-  else if (args[0] == SYS_WRITE)
-    {
-      if (args[2] == NULL || !validate_addr (args[2]))
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else if (args[3] < 1)
-          f->eax = 0;
-      else
-        {
-          fid_t fid = args[1];
-          const void *buffer = (void *) args[2];
-          unsigned size = args[3];
-
-          if (fid == STDOUT_FILENO)
-            {
-              putbuf ((const char *) args[2], size);
-              f->eax = size;
-            }
-          else if (fid == STDIN_FILENO)
-            {
-              f->eax = -1;
-              exit (-1);
-            }
-          else
-            {
-              struct file_descriptor *fd = get_file_descriptor (fid);
-              if (fd == NULL)
-                  f->eax = -1;
-              else
-                  f->eax = file_write_l (fd->file, buffer, size);
-            }
-          
-        }
-    }
-  else if (args[0] == SYS_READ)
-    {
-      if (args[2] == NULL || !validate_addr (args[2]))
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else if (args[3] < 1)
-          f->eax = 0;
-      else
-        {
-          fid_t fid = args[1];
-          uint8_t *buffer = (uint8_t *) args[2];
-          unsigned size = args[3];
-    
-          if (fid == STDIN_FILENO)
-            {
-              uint8_t *buffer = (uint8_t *) args[2];
-              size_t i = 0;
-              while (i < args[3]) {
-                buffer[i] = input_getc ();
-                if (buffer[i++] == '\n')
-                  {
-                    buffer[i-1] = '\0';
-                    break;
-                  }
-              }
-              f->eax = i;
-            }
-          else if (fid == STDOUT_FILENO)
-            {
-              f->eax = -1;
-              exit (-1);
-            }
-          else
-            {
-              struct file_descriptor *fd = get_file_descriptor (fid);
-              if (fd == NULL)
-                  f->eax = -1;
-              else
-                  f->eax = file_read_l (fd->file, buffer, size);
-            }
-
-        }
-    }
-  else if (args[0] == SYS_SEEK)
-    {
-      if (args[1] < 2 || args[2] < 0)
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        {
-          fid_t fid = args[1];
-          unsigned position = args[2];
-          struct file_descriptor *fd = get_file_descriptor (fid);
-          if (fd != NULL)
-            {
-              file_seek_l (fd->file, position);
-            }
-        }
-    }
-  else if (args[0] == SYS_TELL)
-    {
-      if (args[1] < 2)
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        {
-          fid_t fid = args[1];
-          unsigned position = args[2];
-          struct file_descriptor *fd = get_file_descriptor (fid);
-          if (fd == NULL)
-              f->eax = -1;
-          else
-            {
-              f->eax = file_tell_l (fd->file);
-            }
-        }
-    }
-  else if (args[0] == SYS_HALT)
-    {
-      shutdown_power_off();
-    }
-  else if (args[0] == SYS_EXEC)
-    {
-      if (!is_valid_string ((char*) args[1]))
-        {
-          f->eax = -1;
-          exit (-1);
-        }
-      else
-        f->eax = process_execute ((char*) args[1]);
-    }
-  else if (args[0] == SYS_WAIT)
-    {
-      f->eax = process_wait((tid_t) args[1]);
-    }
+static void
+sys_close (struct intr_frame *f, fid_t fid)
+{
+  if (fid < 2) /* Trying to close stdin or stdout */
+      sys_exit (f, -1);
   else
     {
-      f->eax = -1;
-      exit (-1);
+      struct file_descriptor *fd = get_file_descriptor (fid);
+      if (fd == NULL)
+          f->eax = -1;
+      else
+        {
+          file_close_l(fd->file);
+          list_remove (&fd->fd_elem);
+          free (fd);
+          f->eax = 0;
+        }
     }
+}
+
+static void
+sys_filesize (struct intr_frame *f, fid_t fid)
+{
+  if (fid < 2) /* stdin or stdout */
+      sys_exit (f, -1);
+  else
+    {
+      struct file_descriptor *fd = get_file_descriptor (fid);
+      if (fd == NULL)
+          f->eax = -1;
+      else
+          f->eax = file_length_l (fd->file);
+    }
+}
+
+static void
+sys_write (struct intr_frame *f, fid_t fid, const char *buffer, unsigned size)
+{
+  if (fid == STDIN_FILENO || !validate_addr (buffer))
+      sys_exit (f, -1);
+  else if (size < 1)
+      f->eax = 0;
+  else
+    {
+      if (fid == STDOUT_FILENO)
+        {
+          putbuf (buffer, size);
+          f->eax = size;
+        }
+      else
+        {
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd == NULL)
+              f->eax = -1;
+          else
+              f->eax = file_write_l (fd->file, buffer, size);
+        }
+    }
+}
+
+static unsigned
+inputbuf (char * buffer, unsigned size)
+{
+  size_t i = 0;
+  while (i < size)
+  {
+    buffer[i] = input_getc ();
+    if (buffer[i++] == '\n')
+      {
+        buffer[i-1] = '\0';
+        break;
+      }
+  }
+  return i;
+}
+
+static void
+sys_read (struct intr_frame *f, fid_t fid, char *buffer, unsigned size)
+{
+  if (fid == STDOUT_FILENO || !validate_addr (buffer))
+      sys_exit (f, -1);
+  else if (size < 1)
+      f->eax = 0;
+  else
+    {
+      if (fid == STDIN_FILENO)
+          f-> eax = inputbuf (buffer, size);
+      else
+        {
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd == NULL)
+              f->eax = -1;
+          else
+              f->eax = file_read_l (fd->file, buffer, size);
+        }
+    }
+}
+
+static void
+sys_seek (fid_t fid, unsigned position)
+{
+  if (fid < 2 || position < 0)
+      exit (-1);
+  else
+    {
+      struct file_descriptor *fd = get_file_descriptor (fid);
+      if (fd != NULL)
+          file_seek_l (fd->file, position);
+    }
+}
+
+static void
+sys_tell (struct intr_frame *f, fid_t fid)
+{
+  if (fid < 2)
+      sys_exit (f, -1);
+  else
+    {
+      struct file_descriptor *fd = get_file_descriptor (fid);
+      if (fd == NULL)
+          f->eax = -1;
+      else
+          f->eax = file_tell_l (fd->file);
+    }
+}
+
+static void
+sys_exec (struct intr_frame *f, char *command)
+{
+  if (!is_valid_string (command))
+      sys_exit (f, -1);
+  else
+    f->eax = process_execute (command);
 }
