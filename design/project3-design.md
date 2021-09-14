@@ -1,3 +1,5 @@
+<div dir="rtl" style="text-align: justify;">
+
 تمرین گروهی ۳ - مستند طراحی
 ======================
 
@@ -5,6 +7,14 @@
 -----
 
 >>‫نام و آدرس پست الکترونیکی اعضای گروه را در این قسمت بنویسید.
+
+عرشیا اخوان <letmemakenewone@gmail.com>
+
+محمدرضا عبدی <reza_abdi20@yahoo.com>
+
+احمد سلیمی <ahsa9978@gmail.com> 
+
+امیرمهدی نامجو <amirm137878@gmail.com> 
 
 مقدمات
 ----------
@@ -16,10 +26,41 @@
 بافر کش
 ============
 
+Since the cache size is 64, time complexity of searching through entire list is very small so LRU works well
+
+
 داده‌ساختار‌ها و توابع
 ---------------------
 
 >>‫ در این قسمت تعریف هر یک از `struct` ها، اعضای `struct` ها، متغیرهای سراسری یا ایستا، `typedef` ها یا `enum` هایی که ایجاد کرده‌اید یا تغییر داده‌اید را‫ بنویسید و دلیل هر کدام را در حداکثر ۲۵ کلمه توضیح دهید.
+
+
+<div dir="ltr">
+
+```c
+#define BUFFER_CACHE_SIZE 64
+
+struct cache_block {
+    block_sector_t sector;
+    char data[BLOCK_SECTOR_SIZE];
+    int dirty;
+    int valid;
+    struct lock c_lock;
+
+#ifdef shakh
+    struct condition ok_to_read;
+    struct condition ok_to_write;
+    int waiting_w;
+    int waiting_r;
+    int available_w;
+    int availle_r;
+#endif
+    struct list_elem elem;
+}
+struct cache_block cache_blocks[64];
+struct list cache;
+```
+</div>
 
 الگوریتم‌ها
 ------------
@@ -110,3 +151,5 @@
 این پیشنهادات میتوانند هم برای تمرین‌های گروهی بعدی همین ترم و هم برای ترم‌های آینده باشد.
 
 >>‫ آیا حرف دیگری دارید؟
+
+ddiv</div>
