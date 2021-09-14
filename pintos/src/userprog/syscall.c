@@ -32,6 +32,18 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+static void 
+kill(int exit_code)
+{
+    printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+    #ifdef USERPROG
+    struct thread* t= thread_current ();
+    t->ps->exit_code = exit_code;
+    t->ps->is_exited = 1;
+    #endif
+
+    thread_exit ();
+}
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
@@ -40,8 +52,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   if (!validate_arg (args) || !validate_arg (args + 1) || !validate_arg (args + 2) || !validate_arg (args + 3))
     {
       f->eax = -1;
-      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-      thread_exit ();
+      kill (-1);
     }
 
   /*
@@ -56,14 +67,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   if (args[0] == SYS_EXIT)
     {
       f->eax = args[1];
-      printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
-      #ifdef USERPROG
-      struct thread* t= thread_current ();
-      t->ps->exit_code = args[1];
-      t->ps->is_exited = 1;
-      #endif
-
-      thread_exit ();
+      kill (args[1]);
     }
   else if (args[0] == SYS_PRACTICE)
     {
@@ -105,13 +109,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (!is_valid_string ((char*) args[1]))
         {
           f->eax = -1;
-          printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-          #ifdef USERPROG
-          struct thread* t= thread_current ();
-          t->ps->exit_code = -1;
-          t->ps->is_exited = 1;
-          #endif
-          thread_exit ();
+          kill (-1);
         }
       else
         f->eax = process_execute ((char*) args[1]);
@@ -123,7 +121,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   else
     {
       f->eax = -1;
-      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-      thread_exit ();
+      kill (-1);
     }
 }
