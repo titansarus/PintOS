@@ -50,15 +50,12 @@ process_execute (const char *file_name)
 
 /* pushing arguments given with the filename to the user stack
    returns address of the argv if successful and -1 otherwise. */
-int push_args (const char* command, int len, int argc, int* esp){
-  // size_t len = strnlen (command, -vtop (command));
-  // if (len == -vtop (command)){
-  //   return -1;
-  // }
+static int
+push_args (const char* cmd, int cmd_len, int argc, int* esp){
   
-  /* pushing command's content */
-  *esp -= len + 1;
-  memcpy ((void*) *esp, command, len + 1);
+  /* pushing cmd's content */
+  *esp -= cmd_len + 1;
+  memcpy ((void*) *esp, cmd, cmd_len + 1);
   int argv_offset =* esp;
 
   /* stack align */
@@ -72,7 +69,7 @@ int push_args (const char* command, int len, int argc, int* esp){
 
   /* pushing argv */
   *esp -= 4 * argc;
-  const char* arg = command;
+  const char* arg = cmd;
   for (int i = 0; i < argc; i++)
   {
     *((int*) (*esp)) = argv_offset;
@@ -101,7 +98,7 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
 
   int argc;
-  int len = strlen (file_name);
+  int cmd_len = strlen (file_name);
   /* putting \0 at the end of each word and calculating argc */
   char *token, *save_ptr;
   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
@@ -115,7 +112,7 @@ start_process (void *file_name_)
   if (!success)
     thread_exit ();
 
-  int argv = push_args (file_name, len, argc, &if_.esp);
+  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
 
   /* stask align */
   if_.esp -=(unsigned int)(if_.esp) % 16 - 4;
