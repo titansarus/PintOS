@@ -50,7 +50,7 @@ process_execute (const char *file_name)
 
 /* pushing arguments given with the filename to the user stack
    returns address of the argv if successful and -1 otherwise. */
-int
+static  int
 push_args (char* cmd, int cmd_len, int argc, int* esp)
 {
   /* pushing cmd's content */
