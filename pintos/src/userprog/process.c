@@ -49,7 +49,7 @@ process_execute (const char *file_name)
 }
 
 
-int push_args (const char* argv,int len,int argc, int* esp){
+int push_args (const char* argv, int len, int argc, int* esp){
   // size_t len = strnlen (argv, -vtop (argv));
   // if (len == -vtop (argv)){
   //   return -1;
@@ -57,29 +57,30 @@ int push_args (const char* argv,int len,int argc, int* esp){
   
   
   /* pushing argv's content */
-  *esp-=len+1;
-  memcpy(*esp,argv,len+1);
-  int argv_offset=*esp;
+  *esp -= len + 1;
+  memcpy (*esp, argv, len + 1);
+  int argv_offset =* esp;
 
   /* stack align */
-  int align_size=(4-(*esp%4))%4;
-  *esp-=align_size;
-  memset(*esp,0xff,align_size);
+  int align_size = (4 - (*esp % 4)) % 4;
+  *esp -= align_size;
+  memset (*esp, 0xff, align_size);
   
   /* argv[argc+1]=NULL; */ 
-  *esp-=4;
-  memset(*esp,0,4);
+  *esp -= 4;
+  memset (*esp, 0, 4);
 
   /* pushing argv */
-  *esp-=4*argc;
-  char* arg=argv;
-  for(int i=0;i<argc;i++){
-    *((int*)(*esp))=argv_offset;
-    argv_offset+=strlen(arg)+1;
-    arg+=strlen(arg)+1;
-    *esp+=4;
+  *esp -= 4 * argc;
+  char* arg = argv;
+  for (int i = 0; i < argc; i++)
+  {
+    *((int*) (*esp)) = argv_offset;
+    argv_offset += strlen (arg) + 1;
+    arg += strlen (arg) + 1;
+    *esp += 4;
   }
-  *esp-=4*(argc);
+  *esp -= 4 * (argc);
   return *esp;
 
 }
@@ -114,13 +115,15 @@ start_process (void *file_name_)
   if (!success)
     thread_exit ();
 
-  int argv_ptr = push_args(file_name,len,argc,&if_.esp);
+  int argv = push_args (file_name, len, argc, &if_.esp);
 
   /* stask align */
-  if_.esp-=((((int)(if_.esp)%16)+16)%16)-4;
-  if_.esp-=8;
-  *((int*)(if_.esp+4))=argv_ptr;
-  *((int*)(if_.esp))=argc;
+  if_.esp -=((((int) (if_.esp) % 16) + 16) % 16) - 4;
+  
+  /* pushing argv and argc */
+  if_.esp -= 8;
+  *((int*) (if_.esp + 4)) = argv;
+  *((int*) (if_.esp)) = argc;
   
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
