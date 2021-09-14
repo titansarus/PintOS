@@ -283,10 +283,7 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-  lock_acquire(&thread_current ()->ps->rc_lock);
-  thread_current ()->ps->rc--;
-  lock_release(&thread_current ()->ps->rc_lock);
-  
+  decrease_rc(&thread_current ()->ps);
 
 
 #ifdef USERPROG
@@ -298,6 +295,7 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
+  sema_up(&(thread_current ()->ps->ws));
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();

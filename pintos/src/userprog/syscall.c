@@ -88,6 +88,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       f->eax=process_execute((char*) args[1]);
     }
+  else if (args[0] == SYS_WAIT)
+    {
+      f->eax = process_wait((tid_t) args[1]);
+    }
   else
     {
       f->eax = -1;

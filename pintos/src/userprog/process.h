@@ -41,4 +41,6 @@ struct process_status
 
 void init_process_status(struct process_status*);
 
+void decrease_rc(struct process_status*);
+
 #endif /* userprog/process.h */

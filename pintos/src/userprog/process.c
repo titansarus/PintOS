@@ -20,7 +20,6 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 
-static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -45,20 +44,32 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  sema_init (&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
-  struct process_status *ps = malloc (sizeof (struct process_status));
+  struct process_status *ps = palloc_get_page(PAL_USER);//malloc (sizeof (struct process_status));
   init_process_status(ps);
-  // list_push_back (&thread_current ()->children , &ps->children_elem);
+  
+  //iftoff
+  memset(&(thread_current()->children),0,sizeof(struct list));
+  list_init(&thread_current ()->children);
+  //endtof
+
+  list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
   struct t_args *targs = malloc (sizeof (struct t_args));
-  targs->fn = fn_copy;
+  
+  //iftoff
+  char *cmd = palloc_get_page (0);
+  if (cmd == NULL)
+    return TID_ERROR;
+  strlcpy (cmd, file_name, PGSIZE);
+  //endtof
+
+  targs->fn = cmd;
   targs->ps = ps;
 
   /* Create a new thread to execute FILE_NAME. */
@@ -151,7 +162,7 @@ start_process (struct t_args *targs)
 
   t->ps = targs->ps;
   t->ps->pid = t->tid;
-  // list_init(&t->children);
+  list_init(&t->children);
   
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -186,6 +197,19 @@ start_process (struct t_args *targs)
   NOT_REACHED ();
 }
 
+struct process_status *find_child(struct thread *t, tid_t child_pid) {
+  struct process_status *result = NULL;
+  struct list *children = &t->children;
+  for (struct list_elem *e = list_begin(children); e != list_end(children); e = list_next(e)) {
+    struct process_status *current_child = list_entry(e, struct process_status, children_elem);
+    if (current_child->pid == child_pid) {
+      result = current_child;
+      break;
+    }
+  }
+  return result;
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -196,10 +220,26 @@ start_process (struct t_args *targs)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  sema_down (&temporary);
-  return 0;
+  struct process_status *child=find_child(thread_current(),child_tid);
+
+  if(child==NULL)
+  {
+    return -1;
+  }
+  if (child->already_waited)
+  {
+    list_remove(&child->children_elem);
+    return -1;
+  }
+  
+  child->already_waited=true;
+  sema_down(&child->ws);
+  int exit_code=child->exit_code;
+  
+  //TODO free child 
+  return exit_code;
 }
 
 /* Free the current process's resources. */
@@ -225,7 +265,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  sema_up (&temporary);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -574,4 +613,13 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+
+void
+decrease_rc (struct process_status* ps)
+{
+  lock_acquire(&thread_current ()->ps->rc_lock);
+  thread_current ()->ps->rc--;
+  lock_release(&thread_current ()->ps->rc_lock);
 }
