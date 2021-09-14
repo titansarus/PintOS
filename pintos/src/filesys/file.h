@@ -26,4 +26,12 @@ void file_seek (struct file *, off_t);
 off_t file_tell (struct file *);
 off_t file_length (struct file *);
 
+/* thread safe abstractions over functions above (using filesys.h:fs_lock)*/
+void file_close_l (struct file *);
+void file_seek_l (struct file *, off_t);
+off_t file_tell_l (struct file *);
+off_t file_length_l (struct file *);
+off_t file_read_l (struct file *, void *, off_t);
+off_t file_write_l (struct file *, const void *, off_t);
+
 #endif /* filesys/file.h */

@@ -149,9 +149,7 @@ syscall_handler (struct intr_frame *f UNUSED)
               f->eax = -1;
           else
             {
-              lock_acquire(&fs_lock);
-              file_close (fd->file);
-              lock_release(&fs_lock);
+              file_close_l(fd->file);
               list_remove (&fd->fd_elem);
               free (fd);
               f->eax = 0;
@@ -172,9 +170,8 @@ syscall_handler (struct intr_frame *f UNUSED)
             f->eax = -1;
           else
             {
-              lock_acquire(&fs_lock);
-              f->eax = file_length (fd->file);
-              lock_release(&fs_lock);
+
+              f->eax = file_length_l (fd->file);
             }
         }
     }
@@ -193,8 +190,6 @@ syscall_handler (struct intr_frame *f UNUSED)
           const void *buffer = (void *) args[2];
           unsigned size = args[3];
 
-          lock_acquire (&fs_lock);
-
           if (fid == STDOUT_FILENO)
             {
               putbuf ((const char *) args[2], size);
@@ -211,10 +206,9 @@ syscall_handler (struct intr_frame *f UNUSED)
               if (fd == NULL)
                   f->eax = -1;
               else
-                  f->eax = file_write (fd->file, buffer, size);
+                  f->eax = file_write_l (fd->file, buffer, size);
             }
           
-          lock_release (&fs_lock);
         }
     }
   else if (args[0] == SYS_READ)
@@ -231,9 +225,7 @@ syscall_handler (struct intr_frame *f UNUSED)
           fid_t fid = args[1];
           uint8_t *buffer = (uint8_t *) args[2];
           unsigned size = args[3];
-
-          lock_acquire (&fs_lock);
-          
+    
           if (fid == STDIN_FILENO)
             {
               for (unsigned i = 0; i < size; i++)
@@ -253,9 +245,8 @@ syscall_handler (struct intr_frame *f UNUSED)
               if (fd == NULL)
                   f->eax = -1;
               else
-                  f->eax = file_read (fd->file, buffer, size);
+                  f->eax = file_read_l (fd->file, buffer, size);
             }
-          lock_release (&fs_lock);
 
         }
     }
@@ -273,9 +264,7 @@ syscall_handler (struct intr_frame *f UNUSED)
           struct file_descriptor *fd = get_file_descriptor (fid);
           if (fd != NULL)
             {
-              lock_acquire(&fs_lock);
-              file_seek (fd->file, position);
-              lock_release(&fs_lock);
+              file_seek_l (fd->file, position);
             }
         }
     }
@@ -295,9 +284,7 @@ syscall_handler (struct intr_frame *f UNUSED)
               f->eax = -1;
           else
             {
-              lock_acquire(&fs_lock);
-              f->eax = file_tell (fd->file);
-              lock_release(&fs_lock);              
+              f->eax = file_tell_l (fd->file);
             }
         }
     }
