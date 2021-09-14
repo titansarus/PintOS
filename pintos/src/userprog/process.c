@@ -72,7 +72,7 @@ int push_args (const char* command, int len, int argc, int* esp){
 
   /* pushing argv */
   *esp -= 4 * argc;
-  char* arg = command;
+  const char* arg = command;
   for (int i = 0; i < argc; i++)
   {
     *((int*) (*esp)) = argv_offset;
