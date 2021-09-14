@@ -31,7 +31,8 @@ enum
     SYS_ISDIR,                  /* Tests if a fd represents a directory. */
     SYS_INUMBER,                /* Returns the inode number for a fd. */
 
-    SYS_CACHE_SPEC              /* Returns Cache specification.*/
+    SYS_CACHE_SPEC,              /* Returns cache specification.*/
+    SYS_CACHE_INV,               /* Ivalidate cache blocks. */
   };
   
 

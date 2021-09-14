@@ -50,7 +50,15 @@ int inumber (int fd);
 /* Homework 5, Part B. */
 void* sbrk (intptr_t increment);
 
-/* cache specification syscall*/
+
+/* user cache syscalls*/
+#define CACHE_R_CNT 0x1
+#define CACHE_W_CNT 0x2
+#define CACHE_MISS  0x4
+#define CACHE_HIT   0x8
+
 int cache_spec (uint32_t flag);
+
+void cache_invalidate (void);
 
 #endif /* lib/user/syscall.h */

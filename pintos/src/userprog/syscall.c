@@ -43,6 +43,7 @@ static void sys_readdir (struct intr_frame *, fid_t, char *);
 static void sys_isdir (struct intr_frame *, fid_t);
 static void sys_inumber (struct intr_frame *, fid_t);
 static void sys_cache_spec(struct intr_frame *,uint32_t );
+static void sys_cache_invalidate(void);
 
 
 
@@ -114,6 +115,7 @@ validate_args(uint32_t *args){
     case SYS_CHDIR:
     case SYS_CLOSE:
     case SYS_CACHE_SPEC:
+    case SYS_CACHE_INV:
       if (!validate_arg (args+1,sizeof (uint32_t)))return false;
   }
   
@@ -182,6 +184,8 @@ syscall_handler (struct intr_frame *f)
       case SYS_INUMBER:sys_inumber(f, (fid_t) args[1]);
       break;
       case SYS_CACHE_SPEC:sys_cache_spec(f, args[1]);
+      break;
+      case SYS_CACHE_INV:sys_cache_invalidate();
       break;
       default:sys_exit (f, args[1]);
     }
@@ -482,4 +486,8 @@ static void sys_cache_spec(struct intr_frame *f,uint32_t flag){
       f->eax = -1;
   }
  
+}
+
+static void sys_cache_invalidate(){
+  cache_invalidate(fs_device);
 }

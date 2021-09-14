@@ -203,3 +203,9 @@ cache_spec (uint32_t flag)
 {
   return syscall1 (SYS_CACHE_SPEC, flag);
 }
+
+void
+cache_invalidate ()
+{
+  syscall0(SYS_CACHE_INV);
+}

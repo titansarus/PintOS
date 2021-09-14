@@ -13,10 +13,6 @@ static void cache_block_init(struct cache_block* c_b){
     lock_init(&c_b->c_lock);
     c_b->dirty=0;
     c_b->valid=0;
-    
-    c_b->status.read_cnt=0;
-    c_b->status.write_cnt=0;
-
 }
 
 void cache_init(){
@@ -32,6 +28,7 @@ void cache_init(){
     
     LRU_miss=0;
     LRU_hit=0;
+    LRU_write=0;
     lock_release(&LRU_modify_lock);
 }
 
@@ -41,6 +38,7 @@ static void cache_write_back(struct block *fs_device, struct cache_block* cb)
     
     block_write(fs_device,cb->sector,cb->data);
     cb->dirty=0;
+    LRU_write++;
 }
 
 
@@ -76,6 +74,7 @@ static struct cache_block *get_cache_block (struct block *fs_device, block_secto
     if (old_cb->valid && old_cb->dirty)
             cache_write_back(fs_device,old_cb);
     
+    
     // update new cache block
     block_read(fs_device, sector, old_cb->data);
     old_cb->valid=1;
@@ -101,7 +100,6 @@ void cache_read (struct block *fs_device, block_sector_t sector, void *dst, off_
         lock_acquire(&cache->c_lock);
 
         memcpy(dst, &(cache->data[offset]), min(bytes_left, BLOCK_SECTOR_SIZE));
-        cache->status.read_cnt++;
 
         lock_release(&cache->c_lock);
         
@@ -125,7 +123,6 @@ void cache_write (struct block *fs_device, block_sector_t sector, void *src, off
         
         memcpy(&(cache->data[offset]), src, min(bytes_left, BLOCK_SECTOR_SIZE));
         cache->dirty=1;
-        cache->status.write_cnt++;
 
         lock_release(&cache->c_lock);
 
@@ -149,23 +146,24 @@ void cache_flush(struct block *fs_device)
     }
 }
 
+void cache_invalidate(struct block *fs_device){
+    cache_flush(fs_device);
+    for (int i=0;i<BUFFER_CACHE_SIZE;i++){
+        lock_acquire(&cache_blocks[i].c_lock);
+        cache_blocks[i].valid=0;
+        lock_release(&cache_blocks[i].c_lock);
+    }
+}
+
+
 uint32_t 
 cache_get_total_read_cnt (){
-    uint32_t res=0;
-    for (int i=0;i<BUFFER_CACHE_SIZE;i++)
-        res+=cache_blocks[i].status.read_cnt;
-    
-    return res;
+    return LRU_miss;
 }
 
 uint32_t
 cache_get_total_write_cnt(){
-    uint32_t res = 0;
-    for (size_t i = 0; i < BUFFER_CACHE_SIZE; i++)
-    {
-        res += cache_blocks[i].status.write_cnt;      
-    }
-    return res;
+    return LRU_write;
 }
 
 uint32_t 
