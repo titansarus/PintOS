@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/directory.h"
+#include "filesys/inode.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
 #ifdef USERPROG
@@ -35,22 +36,38 @@ static void sys_read (struct intr_frame *, fid_t, char *, unsigned);
 static void sys_seek (fid_t, unsigned);
 static void sys_tell (struct intr_frame *, fid_t);
 static void sys_exec (struct intr_frame *, char *);
+static void sys_mkdir (struct intr_frame *, char *);
+static void sys_chdir (struct intr_frame *, char *);
+static void sys_readdir (struct intr_frame *, fid_t, char *);
+static void sys_isdir (struct intr_frame *, fid_t);
+static void sys_inumber (struct intr_frame *, fid_t);
+
+
+
+
 
 /* Validate arguments for all syscalls */
 static bool
 validate_addr (const void *arg)
 {
-  struct thread *current_thread = thread_current ();
   uint32_t *ptr = (uint32_t *) arg;
   return arg != NULL && is_user_vaddr (ptr)
-         && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
+
+#ifdef USERPROG
+         && pagedir_get_page (thread_current ()->pagedir, ptr) != NULL
+#endif
+         ;
 }
 
 static bool
 is_valid_string (char *ustr)
 {
+#ifdef USERPROG
   char *kstr = pagedir_get_page (thread_current ()->pagedir, ustr);
   return kstr != NULL && validate_addr (ustr + strlen (kstr) + 1);
+#else
+  return true;
+#endif
 }
 
 void
@@ -59,16 +76,56 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+
+/* Validate arguments for all syscalls */
+static bool
+validate_arg (const void *arg,size_t size)
+{
+    return validate_addr(arg) && validate_addr(arg+size);
+}
+
+static bool
+validate_args(uint32_t *args){
+  if (!validate_arg (args,sizeof (uint32_t)))return false;
+
+  switch (*args) {
+    case SYS_READ:
+    case SYS_WRITE:
+      if (!validate_arg (args+3,sizeof (uint32_t)))return false;
+
+    case SYS_CREATE:
+    case SYS_SEEK:
+    case SYS_READDIR:
+      if (!validate_arg (args+2,sizeof (uint32_t)))return false;
+    
+    case SYS_PRACTICE:
+    case SYS_EXIT:
+    case SYS_EXEC:
+    case SYS_WAIT:
+    case SYS_REMOVE:
+    case SYS_OPEN:
+    case SYS_FILESIZE:
+    case SYS_TELL:
+    case SYS_ISDIR:
+    case SYS_INUMBER:
+    case SYS_MKDIR:
+    case SYS_CHDIR:
+    case SYS_CLOSE:
+      if (!validate_arg (args+1,sizeof (uint32_t)))return false;
+  }
+  
+  return true;
+}
+
 static void
 syscall_handler (struct intr_frame *f)
 {
   uint32_t *args = ((uint32_t *) f->esp);
 
-  if (!validate_addr (args) || !validate_addr (args + 1) || !validate_addr (args + 2)
-      || !validate_addr (args + 3))
-    sys_exit (f, -1);
+  if (!validate_args(args)){
+    sys_exit(f,-1);
+  }
 
-  uint32_t syscall_code = args[0];
 
   /*
    * The following print statement, if uncommented, will print out the syscall
@@ -78,6 +135,8 @@ syscall_handler (struct intr_frame *f)
    */
 
   /* printf("System call number: %d\n", args[0]); */
+  
+  uint32_t syscall_code = args[0];
 
   switch (syscall_code)
     {
@@ -109,6 +168,16 @@ syscall_handler (struct intr_frame *f)
       break;
       case SYS_WAIT:f->eax = process_wait ((tid_t) args[1]);
       break;
+      case SYS_MKDIR:sys_mkdir(f, (char *) args[1]);
+      break;
+      case SYS_CHDIR:sys_chdir(f, (char *) args[1]);
+      break;
+      case SYS_READDIR:sys_readdir(f, (fid_t) args[1], (char *) args[2]);
+      break;
+      case SYS_ISDIR:sys_isdir(f, (fid_t) args[1]);
+      break;
+      case SYS_INUMBER:sys_inumber(f, (fid_t) args[1]);
+      break;
       default:sys_exit (f, args[1]);
     }
 }
@@ -119,6 +188,7 @@ static int create_fd (struct file *file_)
   struct thread *t = thread_current ();
   struct file_descriptor *fd = malloc (sizeof (struct file_descriptor));
   fd->file = file_;
+  fd->dir = NULL;
   fd->fid = t->next_fid++;
   list_push_back (&t->fd_list, &fd->fd_elem);
   return fd->fid;
@@ -163,7 +233,7 @@ sys_create (struct intr_frame *f, const char *file_name, off_t initial_size)
   if (!validate_addr (file_name))
     sys_exit (f, -1);
   else
-    f->eax = filesys_create_l (file_name, initial_size);
+    f->eax = filesys_create (file_name, initial_size, false);
 }
 
 static void
@@ -172,7 +242,7 @@ sys_remove (struct intr_frame *f, const char *file_name)
   if (!validate_addr (file_name))
     sys_exit (f, -1);
   else
-    f->eax = filesys_remove_l (file_name);
+    f->eax = filesys_remove (file_name);
 }
 
 static void
@@ -182,11 +252,16 @@ sys_open (struct intr_frame *f, const char *file_name)
     sys_exit (f, -1);
   else
     {
-      struct file *file_ = filesys_open_l (file_name);
-      if (file_ == NULL)
-        f->eax = -1;
-      else
-        f->eax = create_fd (file_);
+      struct file *file_ = filesys_open (file_name);
+      f->eax = -1;
+      if (file_)
+        {
+          fid_t fid = create_fd (file_);
+          struct inode *inode = file_get_inode (file_);
+          if (inode && inode_is_dir (inode))
+            get_file_descriptor (fid)->dir = dir_open (inode_reopen (inode));
+          f->eax = fid;
+        }
     }
 }
 
@@ -198,11 +273,11 @@ sys_close (struct intr_frame *f, fid_t fid)
   else
     {
       struct file_descriptor *fd = get_file_descriptor (fid);
-      if (fd == NULL)
-        f->eax = -1;
-      else
+      f->eax = -1;
+      if (fd)
         {
-          file_close_l (fd->file);
+          file_close (fd->file);
+          if (fd->dir) dir_close (fd->dir);
           list_remove (&fd->fd_elem);
           free (fd);
           f->eax = 0;
@@ -218,10 +293,7 @@ sys_filesize (struct intr_frame *f, fid_t fid)
   else
     {
       struct file_descriptor *fd = get_file_descriptor (fid);
-      if (fd == NULL)
-        f->eax = -1;
-      else
-        f->eax = file_length_l (fd->file);
+      f -> eax = fd ? file_length (fd->file) : -1;
     }
 }
 
@@ -242,10 +314,12 @@ sys_write (struct intr_frame *f, fid_t fid, const char *buffer, unsigned size)
       else
         {
           struct file_descriptor *fd = get_file_descriptor (fid);
-          if (fd == NULL)
-            f->eax = -1;
-          else
-            f->eax = file_write_l (fd->file, buffer, size);
+          f->eax = -1;
+          if (fd)
+            {
+              struct inode *inode = file_get_inode (fd->file);
+              f->eax = inode_is_dir (inode) ? -1 : file_write (fd->file, buffer, size);
+            }
         }
     }
 }
@@ -280,10 +354,7 @@ sys_read (struct intr_frame *f, fid_t fid, char *buffer, unsigned size)
       else
         {
           struct file_descriptor *fd = get_file_descriptor (fid);
-          if (fd == NULL)
-            f->eax = -1;
-          else
-            f->eax = file_read_l (fd->file, buffer, size);
+          f->eax = fd ? file_read (fd->file, buffer, size):  -1 ;
         }
     }
 }
@@ -296,8 +367,8 @@ sys_seek (fid_t fid, unsigned position)
   else
     {
       struct file_descriptor *fd = get_file_descriptor (fid);
-      if (fd != NULL)
-        file_seek_l (fd->file, position);
+      if (fd)
+        file_seek (fd->file, position);
     }
 }
 
@@ -309,10 +380,7 @@ sys_tell (struct intr_frame *f, fid_t fid)
   else
     {
       struct file_descriptor *fd = get_file_descriptor (fid);
-      if (fd == NULL)
-        f->eax = -1;
-      else
-        f->eax = file_tell_l (fd->file);
+      f->eax = fd ? file_tell (fd->file) : -1;
     }
 }
 
@@ -323,4 +391,64 @@ sys_exec (struct intr_frame *f, char *command)
     sys_exit (f, -1);
   else
     f->eax = process_execute (command);
+}
+
+
+static void sys_mkdir (struct intr_frame *f, char *name)
+{
+    if (!validate_addr (name))
+    sys_exit (f, -1);
+    else{
+      f->eax = filesys_create (name, 0, true);
+    }
+}
+
+static void sys_chdir (struct intr_frame *f, char *name)
+{
+  if (!validate_addr (name))
+    sys_exit (f, -1);
+  else{
+    struct dir *dir = dir_open_path (name);
+    f->eax = false;
+    if (dir)
+      {
+        struct thread *cur = thread_current ();
+        dir_close (cur->working_dir);
+        cur->working_dir = dir;
+        f->eax = true;
+      }
+  }
+}
+
+static void sys_readdir (struct intr_frame *f, fid_t fid, char *name)
+{
+  if (!validate_addr (name))
+    sys_exit (f, -1);
+  else{
+    struct file *file = get_file_descriptor (fid)->file;
+    f->eax = -1;
+    if (file)
+      {
+        struct inode *inode = file_get_inode (file);
+        if (!inode || !inode_is_dir (inode))
+          f->eax = false;
+        else
+          {
+            struct dir *dir = get_file_descriptor (fid)->dir;
+            f->eax = dir_readdir (dir, name);
+          }
+      }
+  }
+}
+
+static void sys_isdir (struct intr_frame *f, fid_t fid)
+{
+  struct file *file = get_file_descriptor (fid)->file;
+  f->eax = file ? inode_is_dir (file_get_inode (file)) : -1;
+}
+
+static void sys_inumber (struct intr_frame *f, fid_t fid)
+{
+  struct file *file = get_file_descriptor (fid)->file;
+  f->eax = file ? (block_sector_t) inode_get_inumber (file_get_inode (file)) : -1;
 }

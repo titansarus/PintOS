@@ -45,7 +45,8 @@ process_execute (const char *file_name)
   tid_t tid;
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status (ps);
-  list_push_back (&(thread_current ()->children), &ps->children_elem);
+  struct thread *cur = thread_current ();
+  list_push_back (&(cur->children), &ps->children_elem);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -57,6 +58,7 @@ process_execute (const char *file_name)
   struct t_args *targs = malloc (sizeof (struct t_args));
   targs->fn = cmd;
   targs->ps = ps;
+  targs->working_dir = cur->working_dir;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, targs);
@@ -153,6 +155,8 @@ start_process (struct t_args *targs)
   t->ps = targs->ps;
   t->ps->pid = t->tid;
   list_init (&t->children);
+
+  t->working_dir = targs->working_dir ? dir_reopen (targs->working_dir) : dir_open_root ();
 
   free (targs);
 
@@ -252,15 +256,15 @@ process_exit (void)
   free_children (cur);
   free_fds (cur);
 
-  /* release fs_lock if held */
-  if (lock_held_by_current_thread (&fs_lock))
-    lock_release (&fs_lock);
-
   /* free current threads process_status if the parrent thread is dead */
   if (cur->ps->rc == 0)
     free (cur->ps);
   else
     sema_up (&(cur->ps->ws));
+
+  /* Close current working directory */
+  if (cur->working_dir != NULL)
+    dir_close (cur->working_dir);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -280,7 +284,7 @@ process_exit (void)
     }
 
   /* Close executable file of thread. */
-  file_close_l (cur->exec_file);
+  file_close (cur->exec_file);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -389,7 +393,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open_l (file_name);
+  file = filesys_open (file_name);
   t->exec_file = file;
   if (file == NULL)
     {
@@ -668,9 +672,7 @@ free_fds (struct thread *cur)
       struct file_descriptor *fd = list_entry (e,
       struct file_descriptor, fd_elem);
       e = list_remove (&fd->fd_elem)->prev;
-      lock_acquire (&fs_lock);
       file_close (fd->file);
-      lock_release (&fs_lock);
       free (fd);
     }
 }

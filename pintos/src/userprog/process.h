@@ -15,6 +15,7 @@ struct file_descriptor
   {
     fid_t fid;
     struct file *file;
+    struct dir *dir;
     struct list_elem fd_elem;
   };
 

@@ -92,6 +92,7 @@ struct t_args
   {
     char *fn;
     struct process_status *ps;
+    struct dir *working_dir;
   };
 
 struct thread
@@ -103,6 +104,9 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+
+    /* Thread's current working directory */
+    struct dir *working_dir;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
