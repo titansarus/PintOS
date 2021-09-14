@@ -4,6 +4,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "filesys/directory.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -13,7 +16,7 @@ static void syscall_handler (struct intr_frame *);
 
 /* Validate arguments for all syscalls */
 static bool
-validate_arg (void *arg)
+validate_addr (void *arg)
 {
   struct thread *current_thread = thread_current ();
   uint32_t *ptr = (uint32_t *) arg;
@@ -23,7 +26,7 @@ validate_arg (void *arg)
 static bool
 is_valid_string (char *ustr) {
     char *kstr = pagedir_get_page (thread_current ()->pagedir, ustr);
-    return kstr != NULL && validate_arg (ustr + strlen (kstr) + 1);
+    return kstr != NULL && validate_addr (ustr + strlen (kstr) + 1);
 }
 
 void
@@ -49,7 +52,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
-  if (!validate_arg (args) || !validate_arg (args + 1) || !validate_arg (args + 2) || !validate_arg (args + 3))
+  if (!validate_addr (args) || !validate_addr (args + 1) || !validate_addr (args + 2) || !validate_addr (args + 3))
     {
       f->eax = -1;
       kill (-1);
@@ -72,6 +75,16 @@ syscall_handler (struct intr_frame *f UNUSED)
   else if (args[0] == SYS_PRACTICE)
     {
       f->eax = args[1] + 1;
+    }
+  else if (args[0] == SYS_CREATE)
+    {
+      if (args[1] == NULL || !validate_addr (args[1]))
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        f->eax = filesys_create ((char *) args[1], args[2]);
     }
   else if (args[0] == SYS_WRITE)
     {
