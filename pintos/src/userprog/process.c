@@ -106,6 +106,8 @@ start_process (void *file_name_)
 	  argc++;
 
   success = load (file_name, &if_.eip, &if_.esp);
+  
+  thread_rename(thread_current(),file_name);
 
   int argv = push_args (file_name, cmd_len, argc, &if_.esp);
 
@@ -115,7 +117,7 @@ start_process (void *file_name_)
     thread_exit ();
 
   /* stask align */
-  if_.esp -= (unsigned int)(if_.esp) % 16 - 8;
+  if_.esp -= (int)((int) ((unsigned int) (if_.esp) % 16) + 8);
   
   /* pushing argv and argc */
   if_.esp -= 8;
