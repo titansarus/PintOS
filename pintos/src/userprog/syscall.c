@@ -179,7 +179,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (args[2] == NULL || !validate_addr (args[2]))
         {
           f->eax = -1;
-          kill (-1);
+          exit (-1);
         }
       else if (args[3] < 1)
           f->eax = 0;
@@ -199,7 +199,7 @@ syscall_handler (struct intr_frame *f UNUSED)
           else if (fid == STDIN_FILENO)
             {
               f->eax = -1;
-              kill (-1);
+              exit (-1);
             }
           else
             {
@@ -218,7 +218,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (args[2] == NULL || !validate_addr (args[2]))
         {
           f->eax = -1;
-          kill (-1);
+          exit (-1);
         }
       else if (args[3] < 1)
           f->eax = 0;
@@ -241,7 +241,7 @@ syscall_handler (struct intr_frame *f UNUSED)
           else if (fid == STDOUT_FILENO)
             {
               f->eax = -1;
-              kill (-1);
+              exit (-1);
             }
           else
             {
@@ -260,7 +260,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (args[1] < 2 || args[2] < 0)
         {
           f->eax = -1;
-          kill (-1);
+          exit (-1);
         }
       else
         {
@@ -276,7 +276,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (args[1] < 2)
         {
           f->eax = -1;
-          kill (-1);
+          exit (-1);
         }
       else
         {
