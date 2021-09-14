@@ -72,6 +72,13 @@ push_args (char* cmd, int cmd_len, int argc, int* esp)
   const char* arg = cmd;
   for (int i = 0; i < argc; i++)
   {
+    /* trimming args */
+    int i = 0;
+    while (*(arg + i) == 0 || *(arg + i) == ' ') i++;
+    arg += i;
+    argv_offset += i;
+    
+    /* pushing the current argv and moving to the next one */
     *((int*) (*esp)) = argv_offset;
     argv_offset += strlen (arg) + 1;
     arg += strlen (arg) + 1;
@@ -97,7 +104,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  int argc;
+  int argc = 0;
   int cmd_len = strlen (file_name);
   /* putting \0 at the end of each word and calculating argc */
   char *token, *save_ptr;
@@ -117,7 +124,7 @@ start_process (void *file_name_)
     thread_exit ();
 
   /* stask align */
-  if_.esp -= (int)((int) ((unsigned int) (if_.esp) % 16) + 8);
+  if_.esp -= ((int) ((unsigned int) (if_.esp) % 16) + 8);
   
   /* pushing argv and argc */
   if_.esp -= 8;
