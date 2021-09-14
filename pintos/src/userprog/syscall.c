@@ -13,12 +13,7 @@
 #include "userprog/process.h"
 #endif
 
-#define STDIN_FILENO  0
-#define STDOUT_FILENO 1
-
 static void syscall_handler (struct intr_frame *);
-
-static struct lock fs_lock;
 
 /* Validate arguments for all syscalls */
 static bool
@@ -39,7 +34,6 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  lock_init(&fs_lock);
 }
 
 
