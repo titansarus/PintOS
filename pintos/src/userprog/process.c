@@ -69,7 +69,7 @@ start_process (void *file_name_)
   if (!success)
     thread_exit ();
 
-  if_.esp -= 36;
+  if_.esp -= 0x28;
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
