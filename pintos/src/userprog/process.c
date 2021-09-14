@@ -52,6 +52,12 @@ process_execute (const char *file_name)
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
   
+  //iftoff
+  memset(&(thread_current()->children),0,sizeof(struct list));
+  list_init(&thread_current ()->children);
+
+  //endtof
+
   list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
   struct t_args *targs = malloc (sizeof (struct t_args));
@@ -267,9 +273,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
-  /* Close executable file of thread. */
-  file_close(cur->exec_file);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -379,15 +382,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   file = filesys_open (file_name);
-  t->exec_file = file;
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
-
-   /* make executable of a running process non writable */
-  file_deny_write (file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -472,6 +471,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  file_close (file);
   return success;
 }
 

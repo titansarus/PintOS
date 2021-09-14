@@ -4,6 +4,9 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#ifdef USERPROG
+#include "userprog/process.h"
+#endif
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -65,6 +68,20 @@ void
 exception_print_stats (void)
 {
   printf ("Exception: %lld page faults\n", page_fault_cnt);
+}
+
+/* Exit the current thread with exit code */
+void 
+exit(int exit_code)
+{
+    printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+    #ifdef USERPROG
+    struct thread* t= thread_current ();
+    t->ps->exit_code = exit_code;
+    t->ps->is_exited = 1;
+    #endif
+
+    thread_exit ();
 }
 
 /* Handler for an exception (probably) caused by a user process. */
@@ -147,6 +164,14 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+
+ /* if the page fault it caused by a write violation, exit the process*/
+//   if (!not_present)
+//     exit (-1);
+  
+//   if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+//     exit (-1);
+
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
