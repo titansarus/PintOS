@@ -11,6 +11,8 @@
 #include "userprog/process.h"
 #endif
 
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
 
 static void syscall_handler (struct intr_frame *);
 
@@ -182,10 +184,10 @@ syscall_handler (struct intr_frame *f UNUSED)
   else if (args[0] == SYS_WRITE)
     {
       /* TODO: implement for all file descriptors */
-      int fd = args[1];
+      fid_t fid = args[1];
       const void *buffer = (void *) args[2];
       unsigned size = args[3];
-      if (fd == 1)
+      if (fid == STDOUT_FILENO)
         {
           putbuf ((const char *) args[2], size);          
           f->eax = size;
@@ -194,17 +196,43 @@ syscall_handler (struct intr_frame *f UNUSED)
   else if (args[0] == SYS_READ)
     {
       /* TODO: implement for all file descrimtors */
-      int fd = args[1];
-      uint8_t *buffer = (uint8_t *) args[2];
-      unsigned size = args[3];
-      if (fd == 0)
+      if (args[2] == NULL || !validate_addr (args[2]))
         {
-          for (unsigned i = 0; i < size; i++)
-            {
-              buffer[i] = input_getc ();
-            }
-          f->eax = size;
+          f->eax = -1;
+          kill (-1);
         }
+      else if (args[2] < 1)
+          f->eax = 0;
+      else
+        {
+          fid_t fid = args[1];
+          uint8_t *buffer = (uint8_t *) args[2];
+          unsigned size = args[3];
+          if (fid == STDIN_FILENO)
+            {
+              for (unsigned i = 0; i < size; i++)
+                {
+                  buffer[i] = input_getc ();
+                }
+              f->eax = size;
+            }
+          else if (fid == STDOUT_FILENO)
+            {
+              f->eax = -1;
+              kill (-1);
+            }
+          else
+            {
+              struct file_descriptor *fd = get_file_descriptor (fid);
+              if (fd == NULL)
+                  f->eax = -1;
+              else
+                {
+                  f->eax = file_read (fd->file, buffer, size);
+                }
+            }
+        }
+
     }
   else if (args[0] == SYS_HALT)
     {
