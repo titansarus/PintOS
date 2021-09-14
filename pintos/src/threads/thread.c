@@ -283,19 +283,35 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-  decrease_rc(thread_current ()->ps);
+  struct thread* cur = thread_current ();
+  decrease_rc(cur->ps);
+
+  #ifdef USERPROG
+  // /* free up the process_status of child threads if needed */
+  // struct list *children = &cur->children;
+  // for (struct list_elem *e = list_begin(children); e != list_end(children); e = list_next(e)) {
+  //   struct process_status *current_child = list_entry(e, struct process_status, children_elem);
+  //   if (current_child->rc == 1) {
+  //     free(current_child);
+  //   }
+  // }
+  /* free up current threads process_status in memory if needed */
+  if (cur->ps->rc == 0)
+    free(cur->ps);
+  else
+    sema_up (& (cur->ps->ws));
+  #endif
 
 
 #ifdef USERPROG
   process_exit ();
 #endif
-
+  
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
-  sema_up(&(thread_current ()->ps->ws));
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();

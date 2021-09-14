@@ -49,7 +49,7 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  struct process_status *ps = palloc_get_page(PAL_USER);//malloc (sizeof (struct process_status));
+  struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
   
   //iftoff
@@ -76,11 +76,13 @@ process_execute (const char *file_name)
   palloc_free_page (fn_copy);
   if (tid == TID_ERROR)
     {
+      palloc_free_page (cmd);
       free(ps);
       return TID_ERROR;
     }
 
   sema_down(&ps->ws);
+
   if (ps->is_exited && ps->exit_code == -1)
     //todo: free child status
     return -1;
@@ -161,6 +163,8 @@ start_process (struct t_args *targs)
   t->ps->pid = t->tid;
   list_init(&t->children);
   
+  free(targs);
+  
   /* If load failed, quit. */
   if (!success){
     t->ps->exit_code=-1;
@@ -187,6 +191,7 @@ start_process (struct t_args *targs)
 
   /* Pushing a fake return address */
   if_.esp -= 4;
+  
   
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -232,6 +237,7 @@ process_wait (tid_t child_tid)
   if (child->already_waited)
   {
     list_remove(&child->children_elem);
+    free(child);
     return -1;
   }
   
@@ -249,7 +255,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
