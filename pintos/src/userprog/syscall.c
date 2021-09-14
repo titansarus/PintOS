@@ -48,4 +48,8 @@ syscall_handler (struct intr_frame *f UNUSED)
           f->eax = size;
         }
     }
+  else if (args[0] == SYS_HALT)
+    {
+     shutdown_power_off();
+    }
 }
