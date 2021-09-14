@@ -4,6 +4,10 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#ifdef USERPROG
+#include "userprog/process.h"
+#endif
+
 
 static void syscall_handler (struct intr_frame *);
 
@@ -47,6 +51,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       f->eax = args[1];
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
+      #ifdef USERPROG
+      struct thread* t= thread_current ();
+      t->ps->exit_code = args[1];
+      t->ps->is_exited = 1;
+      #endif
+      
       thread_exit ();
     }
   else if (args[0] == SYS_PRACTICE)
