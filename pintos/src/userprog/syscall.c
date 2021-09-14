@@ -86,6 +86,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       else
         f->eax = filesys_create ((char *) args[1], args[2]);
     }
+  else if (args[0] == SYS_REMOVE)
+    {
+      if (args[1] == NULL || !validate_addr (args[1]))
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        f->eax = filesys_remove ((char *) args[1]);
+    }
   else if (args[0] == SYS_WRITE)
     {
       /* TODO: implement for all file descriptors */
