@@ -13,6 +13,7 @@ typedef int fid_t;
 
 struct file_descriptor {
     fid_t fid;
+    const char *name;
     struct file *file;
     struct list_elem fd_elem;
 };

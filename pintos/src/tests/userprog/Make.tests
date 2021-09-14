@@ -17,10 +17,10 @@ exec-bound-2 exec-bound-3 exec-multiple exec-missing exec-bad-ptr       \
 wait-simple wait-twice wait-killed wait-bad-pid multi-recurse           \
 multi-child-fd rox-simple rox-child rox-multichild bad-read bad-write   \
 bad-read2 bad-write2 bad-jump bad-jump2 iloveos practice stack-align-1  \
-stack-align-2 stack-align-3 stack-align-4 seek-and-tell pf-lr)
+stack-align-2 stack-align-3 stack-align-4 seek-and-tell)
 
 tests/userprog_PROGS = $(tests/userprog_TESTS) $(addprefix \
-tests/userprog/,child-simple child-args child-bad child-close child-rox pf-lr-util)
+tests/userprog/,child-simple child-args child-bad child-close child-rox)
 
 tests/userprog/iloveos_SRC = tests/userprog/iloveos.c tests/main.c
 tests/userprog/practice_SRC = tests/userprog/practice.c tests/main.c
@@ -119,10 +119,6 @@ tests/userprog/child-bad_SRC = tests/userprog/child-bad.c tests/main.c
 tests/userprog/child-close_SRC = tests/userprog/child-close.c
 tests/userprog/child-rox_SRC = tests/userprog/child-rox.c
 
-
-tests/userprog/pf-lr_SRC = tests/userprog/pf-lr.c tests/main.c
-tests/userprog/pf-lr-util_SRC = tests/userprog/pf-lr-util.c tests/main.c
-
 $(foreach prog,$(tests/userprog_PROGS),$(eval $(prog)_SRC += tests/lib.c))
 
 tests/userprog/stack-align-2_ARGS = a
@@ -160,5 +156,3 @@ tests/userprog/multi-child-fd_PUTFILES += tests/userprog/child-close
 tests/userprog/wait-killed_PUTFILES += tests/userprog/child-bad
 tests/userprog/rox-child_PUTFILES += tests/userprog/child-rox
 tests/userprog/rox-multichild_PUTFILES += tests/userprog/child-rox
-
-tests/userprog/pf-lr_PUTFILES += tests/userprog/pf-lr-util
