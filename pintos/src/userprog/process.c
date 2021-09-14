@@ -50,16 +50,16 @@ process_execute (const char *file_name)
 
 /* pushing arguments given with the filename to the user stack
    returns address of the argv if successful and -1 otherwise. */
-static int
-push_args (const char* cmd, int cmd_len, int argc, int* esp){
-  
+int
+push_args (char* cmd, int cmd_len, int argc, int* esp)
+{
   /* pushing cmd's content */
   *esp -= cmd_len + 1;
   memcpy ((void*) *esp, cmd, cmd_len + 1);
   int argv_offset =* esp;
 
   /* stack align */
-  int align_size = (4 - (*esp % 4)) % 4;
+  int align_size = ((unsigned int)*esp) % 4;
   *esp -= align_size;
   memset ((void*) *esp, 0xff, align_size);
   
@@ -107,20 +107,23 @@ start_process (void *file_name_)
 
   success = load (file_name, &if_.eip, &if_.esp);
 
+  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
     thread_exit ();
 
-  int argv = push_args (file_name, cmd_len, argc, &if_.esp);
-
   /* stask align */
-  if_.esp -=(unsigned int)(if_.esp) % 16 - 4;
+  if_.esp -=(unsigned int)(if_.esp) % 16;
   
   /* pushing argv and argc */
   if_.esp -= 8;
   *((int*) (if_.esp + 4)) = argv;
   *((int*) (if_.esp)) = argc;
+
+  /* Pushing a fake return address */
+  if_.esp -= 4;
   
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
