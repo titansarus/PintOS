@@ -47,30 +47,22 @@ process_execute (const char *file_name)
   tid_t tid;
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
-  
   list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
-  struct t_args *targs = malloc (sizeof (struct t_args));
-  
-  //iftoff
   char *cmd = palloc_get_page (0);
   if (cmd == NULL)
     return TID_ERROR;
   strlcpy (cmd, file_name, PGSIZE);
-  //endtof
-
+  
+  struct t_args *targs = malloc (sizeof (struct t_args));
   targs->fn = cmd;
   targs->ps = ps;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, targs);
-  palloc_free_page (fn_copy);
   if (tid == TID_ERROR)
     {
       palloc_free_page (cmd);
