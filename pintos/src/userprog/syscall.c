@@ -65,6 +65,21 @@ syscall_handler (struct intr_frame *f UNUSED)
           f->eax = size;
         }
     }
+  else if (args[0] == SYS_READ)
+    {
+      /* TODO: implement for all file descrimtors */
+      int fd = args[1];
+      uint8_t *buffer = (uint8_t *) args[2];
+      unsigned size = args[3];
+      if (fd == 0)
+        {
+          for (unsigned i = 0; i < size; i++)
+            {
+              buffer[i] = input_getc ();
+            }
+          f->eax = size;
+        }
+    }
   else if (args[0] == SYS_HALT)
     {
       shutdown_power_off();
