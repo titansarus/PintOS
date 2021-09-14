@@ -252,6 +252,40 @@ syscall_handler (struct intr_frame *f UNUSED)
             }
         }
     }
+  else if (args[0] == SYS_SEEK)
+    {
+      if (args[1] < 2 || args[2] < 0)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          fid_t fid = args[1];
+          unsigned position = args[2];
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd != NULL)
+              file_seek (fd->file, position);
+        }
+    }
+  else if (args[0] == SYS_TELL)
+    {
+      if (args[1] < 2)
+        {
+          f->eax = -1;
+          kill (-1);
+        }
+      else
+        {
+          fid_t fid = args[1];
+          unsigned position = args[2];
+          struct file_descriptor *fd = get_file_descriptor (fid);
+          if (fd == NULL)
+              f->eax = -1;
+          else
+              f->eax = file_tell (fd->file);
+        }
+    }
   else if (args[0] == SYS_HALT)
     {
       shutdown_power_off();
