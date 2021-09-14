@@ -445,13 +445,109 @@ pintos-debug: dumplist #2: 0xc010a000 {tid = 3, status = THREAD_RUNNING, name = 
 
 ۹.
 
+<div dir="ltr">
+
+```c
+tid_t
+process_execute (const char *file_name)
+{
+  char *fn_copy;
+  tid_t tid;
+
+  sema_init (&temporary, 0);
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page (0);
+  if (fn_copy == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy, file_name, PGSIZE);
+
+  /* Create a new thread to execute FILE_NAME. */
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  if (tid == TID_ERROR)
+    palloc_free_page (fn_copy);
+  return tid;
+}
+```
+
+</div>
+
 ۱۰.
+
+<div dir="ltr">
+
+```x86asm
+esp = 0xc0000000
+eip = 0x8048754
+```
+
+</div>
 
 ۱۱.
 
+تابع
+`start_process`
+بصورت دستی، به پردازنده می‌گوید که از سمت کد کاربر، یک وقفه آمده بوده که
+kernel
+در حال هندل کردن آن بوده است. (در عمل چنین چیزی وجود نداشته، اما چون
+x86
+راه مستقیمی برای
+context switch
+به حالت کاربر ندارد، کرنل به این صورت پردازنده را گول می‌زند.)
+در نتیجه استراکت
+`ـif`
+را می‌سازد و رجیسترها را در آن ذخیره می‌کند. سپس با استفاده از
+`asm volatile`
+و با توجه به این که آدرس پشته را برابر آدرس این استراکت قرار می‌دهد، تابع
+`intr_exit`
+را در
+`intr-stubs.S`
+فراخوانی می‌کند.
+این تابع نیز 
+user state
+را از پشته می‌خواند و با استفاده از
+`iret`
+که دستوری برای بازگشت از وقفه است، به محیط کاربر باز می‌گردد، و این گونه کد کاربر اجرا می‌شود.
+
+
 ۱۲.
 
+<div dir="ltr">
+
+```x86asm
+eax            0x0      0
+ecx            0x0      0
+edx            0x0      0
+ebx            0x0      0
+esp            0xc0000000       0xc0000000
+ebp            0x0      0x0
+esi            0x0      0
+edi            0x0      0
+eip            0x8048754        0x8048754
+eflags         0x202    [ IF ]
+cs             0x1b     27
+ss             0x23     35
+ds             0x23     35
+es             0x23     35
+fs             0x23     35
+gs             0x23     35
+```
+
+</div>
+
+این مقادیر مشابه مقادیر
+`_if`
+هستند. (همانطور که انتظار هم داشتیم.)
+
 ۱۳.
+
+<div dir="ltr">
+
+```log
+#0  _start (argc=<unavailable>, argv=<unavailable>) at ../../lib/user/entry.c:9
+```
+
+</div>
 
 
 ## دیباگ
