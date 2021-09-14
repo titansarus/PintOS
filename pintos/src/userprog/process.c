@@ -48,13 +48,13 @@ process_execute (const char *file_name)
   return tid;
 }
 
-
+/* pushing arguments given with the filename to the user stack
+   returns address of the argv if successful and -1 otherwise. */
 int push_args (const char* command, int len, int argc, int* esp){
   // size_t len = strnlen (command, -vtop (command));
   // if (len == -vtop (command)){
   //   return -1;
   // }
-  
   
   /* pushing command's content */
   *esp -= len + 1;
