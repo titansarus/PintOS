@@ -36,12 +36,14 @@ void cache_init (void);
 
 /* Read chunk_size bytes of data from cache starting from sector_index at position offest,
    into destination. */
-void cache_read (struct block *fs_device, block_sector_t sector, void *dst, off_t offset, int chunk_size);
+void cache_read (struct block *, block_sector_t , void *, off_t , int);
 
 /* Write chunk_size bytes of data into cache starting from sector_index at position offest,
    from source. */
-void cache_write (struct block *fs_device, block_sector_t sector, void *src, off_t offset, int chunk_size);
+void cache_write (struct block *, block_sector_t , void *, off_t , int);
 
+/* Write-back all cache blocks and invalidate them.*/
+void cache_flush(struct block *);
 
 // /* Write entire cache to disk. */
 // void cache_flush (struct block *fs_device);

@@ -80,6 +80,8 @@ static struct cache_block *get_cache_block (struct block *fs_device, block_secto
 
 void cache_read (struct block *fs_device, block_sector_t sector, void *dst, off_t offset, int chunk_size)
 {
+    ASSERT(offset<BLOCK_SECTOR_SIZE);
+
     int bytes_left = chunk_size;
     while (bytes_left > 0)
     {
@@ -99,6 +101,8 @@ void cache_read (struct block *fs_device, block_sector_t sector, void *dst, off_
 
 void cache_write (struct block *fs_device, block_sector_t sector, void *src, off_t offset, int chunk_size)
 {
+    ASSERT(offset<BLOCK_SECTOR_SIZE);
+    
     int bytes_left = chunk_size;
     while (bytes_left > 0)
     {
@@ -117,3 +121,16 @@ void cache_write (struct block *fs_device, block_sector_t sector, void *src, off
         offset = 0;
     }
 } 
+
+void cache_flush(struct block *fs_device)
+{
+    for (int i=0;i<BUFFER_CACHE_SIZE;i++)
+    {   
+        struct cache_block* cb = cache_blocks + i;
+        if(!(cb->valid && cb->dirty))continue;
+
+        lock_acquire(&cb->c_lock);
+        cache_write_back(fs_device,cb);
+        lock_release(&cb->c_lock);
+    }
+}
