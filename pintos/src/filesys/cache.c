@@ -9,7 +9,7 @@
 
 #define min(a,b) ((a)<(b))?(a):(b)
 
-void cache_block_init(struct cache_block* c_b){
+static void cache_block_init(struct cache_block* c_b){
     lock_init(&c_b->c_lock);
     c_b->dirty=0;
     c_b->valid=0;
@@ -29,7 +29,7 @@ void cache_init(){
     lock_release(&LRU_modify_lock);
 }
 
-void cache_write_back(struct block *fs_device, struct cache_block* cb)
+static void cache_write_back(struct block *fs_device, struct cache_block* cb)
 {
     ASSERT(lock_held_by_current_thread(&cb->c_lock));
     
@@ -38,7 +38,7 @@ void cache_write_back(struct block *fs_device, struct cache_block* cb)
 }
 
 
-struct cache_block *get_cache_block (struct block *fs_device, block_sector_t sector)
+static struct cache_block *get_cache_block (struct block *fs_device, block_sector_t sector)
 {
     // if block is already loaded in the cache buffer
     for (int i=0; i < BUFFER_CACHE_SIZE; i++){
@@ -68,6 +68,7 @@ struct cache_block *get_cache_block (struct block *fs_device, block_sector_t sec
     block_read(fs_device, sector, old_cb->data);
     old_cb->valid=1;
     old_cb->dirty=0;
+    old_cb->sector=sector;
     
     lock_release(&old_cb->c_lock);
 
@@ -107,7 +108,7 @@ void cache_write (struct block *fs_device, block_sector_t sector, void *src, off
         
         memcpy(&(cache->data[offset]), src, min(bytes_left, BLOCK_SECTOR_SIZE));
         cache->dirty=1;
-        
+
         lock_release(&cache->c_lock);
 
         sector++;
@@ -115,4 +116,4 @@ void cache_write (struct block *fs_device, block_sector_t sector, void *src, off
         bytes_left -= BLOCK_SECTOR_SIZE;
         offset = 0;
     }
-}// 
+} 
