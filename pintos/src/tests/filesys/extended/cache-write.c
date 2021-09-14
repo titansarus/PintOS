@@ -10,13 +10,13 @@ test_main (void)
 {
   int file;
   
-  CHECK (create ("a", 0), "create \"a\"");
-  CHECK ((file = open ("a")) > 1, "open \"a\" for writing");
+  CHECK (create ("cache", 0), "create \"cache\"");
+  CHECK ((file = open ("cache")) > 1, "open \"cache\" for writing");
 
   cache_invalidate();
   int init_write = cache_spec (CACHE_W_CNT);
 
-  msg ("writing 64kB to \"a\"");
+  msg ("writing 64kB to \"cache\"");
   
   int num_write_bytes = 1<<16;   /* 2^16 */
 
@@ -27,10 +27,10 @@ test_main (void)
       fail ("invalid number of written bytes");
   }
   
-  msg("close \"a\" after writing");
+  msg("close \"cache\" after writing");
   close(file);
 
-  CHECK ((file = open ("a")) > 1, "open \"a\" for read");
+  CHECK ((file = open ("cache")) > 1, "open \"cache\" for read");
   for(int i=0;i<num_write_bytes;i++)
     if(read (file, buffer, 1)!= 1)
       fail ("invalid number of read bytes");
@@ -41,6 +41,6 @@ test_main (void)
     msg("total number of writes is close to 128");
   
   close (file);
-  remove("a");
+  remove("cache");
 
 }

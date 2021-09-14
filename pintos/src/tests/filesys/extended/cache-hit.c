@@ -26,16 +26,16 @@ test_main (void)
   int fd;
   random_init (0);
   random_bytes (buffer, sizeof buffer);
-  CHECK (create ("a", 0), "create \"a\"");
-  CHECK ((fd = open ("a")) > 1, "open \"a\"");
+  CHECK (create ("cache", 0), "create \"cache\"");
+  CHECK ((fd = open ("cache")) > 1, "open \"cache\"");
 
-  msg("creating a");
+  msg("creating cache");
   
   for(int i = 0; i < NUM_BLOCKS; i++)
   {
     int bytes_written = write (fd, buffer, BLOCK_SIZE);
     if (bytes_written != BLOCK_SIZE)
-      fail ("write %zu bytes in \"a\" returned %zu",
+      fail ("write %zu bytes in \"cache\" returned %zu",
             BLOCK_SIZE, bytes_written);
   }
   msg ("close \"tmp\"");
@@ -44,23 +44,23 @@ test_main (void)
   msg("invalidating cache");
   cache_invalidate ();
 
-  CHECK ((fd = open ("a")) > 1, "open \"a\"");
+  CHECK ((fd = open ("cache")) > 1, "open \"cache\"");
   msg ("read tmp");
   read_byte_util (fd);
   close (fd);
-  msg("close \"a\"");
+  msg("close \"cache\"");
 
   int old_hit =  cache_spec (CACHE_HIT);
   int old_total = cache_spec (CACHE_HIT) + cache_spec (CACHE_MISS);
   int old_hit_rate = (100 * cache_spec (CACHE_HIT)) / (old_total);
 
-  CHECK ((fd = open ("a")) > 1, "open \"a\"");
-  msg ("read \"a\"");
+  CHECK ((fd = open ("cache")) > 1, "open \"cache\"");
+  msg ("read \"cache\"");
   read_byte_util (fd);
   close (fd);
-  msg("close \"a\"");
+  msg("close \"cache\"");
 
-  remove ("a");
+  remove ("cache");
 
   int new_total = cache_spec (CACHE_MISS) + cache_spec (CACHE_HIT);
   int new_hit_rate = 100 * (cache_spec (CACHE_HIT) - old_hit) / (new_total - old_total);
