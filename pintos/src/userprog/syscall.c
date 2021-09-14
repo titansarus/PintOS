@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/directory.h"
@@ -15,6 +16,8 @@
 #define STDOUT_FILENO 1
 
 static void syscall_handler (struct intr_frame *);
+
+static struct lock fs_lock;
 
 /* Validate arguments for all syscalls */
 static bool
@@ -35,6 +38,7 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init(&fs_lock);
 }
 
 static void 
@@ -195,6 +199,9 @@ syscall_handler (struct intr_frame *f UNUSED)
           fid_t fid = args[1];
           const void *buffer = (void *) args[2];
           unsigned size = args[3];
+
+          lock_acquire (&fs_lock);
+
           if (fid == STDOUT_FILENO)
             {
               putbuf ((const char *) args[2], size);
@@ -213,6 +220,8 @@ syscall_handler (struct intr_frame *f UNUSED)
               else
                   f->eax = file_write (fd->file, buffer, size);
             }
+          
+          lock_release (&fs_lock);
         }
     }
   else if (args[0] == SYS_READ)
@@ -229,6 +238,9 @@ syscall_handler (struct intr_frame *f UNUSED)
           fid_t fid = args[1];
           uint8_t *buffer = (uint8_t *) args[2];
           unsigned size = args[3];
+
+          lock_acquire (&fs_lock);
+          
           if (fid == STDIN_FILENO)
             {
               for (unsigned i = 0; i < size; i++)
@@ -250,6 +262,8 @@ syscall_handler (struct intr_frame *f UNUSED)
               else
                   f->eax = file_read (fd->file, buffer, size);
             }
+          lock_release (&fs_lock);
+
         }
     }
   else if (args[0] == SYS_SEEK)

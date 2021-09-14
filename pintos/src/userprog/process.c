@@ -52,12 +52,6 @@ process_execute (const char *file_name)
   struct process_status *ps = malloc (sizeof (struct process_status));
   init_process_status(ps);
   
-  //iftoff
-  memset(&(thread_current()->children),0,sizeof(struct list));
-  list_init(&thread_current ()->children);
-
-  //endtof
-
   list_push_back (&(thread_current ()->children) , &ps->children_elem);
   
   struct t_args *targs = malloc (sizeof (struct t_args));
