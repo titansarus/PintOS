@@ -1,15 +1,21 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "lib/string.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/directory.h"
+#include "devices/input.h"
+#include "devices/shutdown.h"
 #ifdef USERPROG
 #include "userprog/exception.h"
+#include "userprog/pagedir.h"
 #include "userprog/process.h"
 #endif
 
@@ -32,7 +38,7 @@ static void sys_exec (struct intr_frame *, char *);
 
 /* Validate arguments for all syscalls */
 static bool
-validate_addr (void *arg)
+validate_addr (const void *arg)
 {
   struct thread *current_thread = thread_current ();
   uint32_t *ptr = (uint32_t *) arg;
@@ -285,7 +291,7 @@ sys_read (struct intr_frame *f, fid_t fid, char *buffer, unsigned size)
 static void
 sys_seek (fid_t fid, unsigned position)
 {
-  if (fid < 2 || position < 0)
+  if (fid < 2)
     exit (-1);
   else
     {

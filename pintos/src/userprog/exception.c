@@ -76,7 +76,7 @@ exception_print_stats (void)
 void
 exit (int exit_code)
 {
-  printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+  printf ("%s: exit(%d)\n", (char *)(&thread_current ()->name), exit_code);
 #ifdef USERPROG
   struct thread* t= thread_current ();
   t->ps->exit_code = exit_code;
