@@ -589,14 +589,94 @@ alignment
 ۱۵.
 
 - 12
-- TODO: Why?
+- بالای پشته در
+`PHYS_BASE`
+قرار دارد که همانجایی است که هسته شروع می‌شود. 
+ولی قبل از اینکه پردازنده داده را درون پشته قرار دهد,
+اشاره‌گر پشته را یک واحد (۴ بایت)
+کم می‌کند. از این رو
+`esp ≡ -4 ≡ 12 mod 16`
+می‌شود.
 
 ۱۶.
 
+<div dir="ltr">
+
+```x86asm
+0xbfffff98:     0x00000001      0x000000a2
+```
+
+</div>
+
 ۱۷.
+
+<div dir="ltr">
+
+```c
+args[0] = 1
+args[1] = 162
+```
+
+</div>
+
+این مقادیر همان مقادیر بالای پشته هستند، که اولی کد
+syscal
+و دومی مقدار
+exit status
+است.
+(gdb
+در حال اجرای
+do-nothing
+بوده است.)
 
 ۱۸.
 
+- هنگامی که یک برنامه توسط کاربر می‌خواهد اجرا شود، 
+pintos
+در فایل
+`init.c`
+تابع
+`process_execute`
+را اجرا می‌کند و خروجی آن، که شناسهٔ ریسه است را به تابع
+`process_wait`
+می‌دهد. علت آن است که کرنل، تا پایان اجرای برنامهٔ کاربر صبر کند.
+بدین منظور، فعلا بصورت
+naïve
+یک
+semaphore
+تعریف شده‌است که هنگام شروع اجرای برنامهٔ کاربر، برابر صفر قرار 
+گرفته و تابع
+`process_wait`،
+سعی می‌کند مقدار
+semaphore
+را کم کند.
+اما چون مقدار آن صفر است این اتفاق نمی‌افتد، تا زمانی که تابع
+`process_exit`
+اجرا شود و مقدار
+semaphore
+را افزایش دهد. البته همانطور که اشاره شد، این پیاده‌سازی
+naïve
+است و در حالت اجرای چند برنامه بصورت همزمان، دچار خطا می‌شود.
+- در تابع
+`process_wait`
+
 ۱۹.
+- main, `0xc000e000`
+
+<div dir="ltr">
+
+```log
+pintos-debug: dumplist #0: 0xc000e000 {tid = 1, status = THREAD_RUNNING, name = "main", '\000' <repeats 11 times>, stack = 0xc000edec "\375\003", priorit
+y = 31, allelem = {prev = 0xc0035910 <all_list>, next = 0xc0104020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir =
+ 0x0, magic = 3446325067}
+pintos-debug: dumplist #1: 0xc0104000 {tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, a
+llelem = {prev = 0xc000e020, next = 0xc010a020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 344632
+5067}
+pintos-debug: dumplist #2: 0xc010a000 {tid = 3, status = THREAD_READY, name = "do-nothing\000\000\000\000\000", stack = 0xc010afd4 "", priority = 31, all
+elem = {prev = 0xc0104020, next = 0xc0035918 <all_list+8>}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, mag
+ic = 3446325067}
+
+```
+</div>
 
 </div>
