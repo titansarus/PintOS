@@ -167,9 +167,6 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  if (lock_held_by_current_thread (&fs_lock))
-    lock_release (&fs_lock);
-
  /* if the page fault it caused by a write violation, exit the process*/
   if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
     exit (-1);

@@ -312,6 +312,9 @@ thread_exit (void)
       free (fd);
     }
 
+  if (lock_held_by_current_thread (&fs_lock))
+    lock_release (&fs_lock);
+
   if (cur->ps->rc == 0)
     free(cur->ps);
   else
