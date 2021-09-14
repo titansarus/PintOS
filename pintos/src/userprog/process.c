@@ -101,7 +101,7 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
 
   int argc;
-  int len=strlen(file_name);
+  int len = strlen (file_name);
   /* putting \0 at the end of each word and calculating argc */
   char *token, *save_ptr;
   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
