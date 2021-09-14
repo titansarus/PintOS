@@ -225,7 +225,8 @@ struct thread_status
   
   /* 
    * initially 2
-   * used for freeing resources  
+   * used for freeing resources 
+   * number of alive threads referencing to this status  
    */
   int rc;
   
@@ -262,7 +263,7 @@ struct thread
 #ifdef USERPROG
   ...
   /* status of process running by this thread */
-  struct thread_status status;
+  struct thread_status *status;
 
   /* list of all the child threads */
   struct list children_status;
