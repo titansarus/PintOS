@@ -7,6 +7,7 @@
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
 
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -15,6 +16,9 @@ enum thread_status
     THREAD_BLOCKED,     /* Waiting for an event to trigger. */
     THREAD_DYING        /* About to be destroyed. */
   };
+
+
+/* used for holding process status */
 
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
@@ -25,6 +29,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define MAX_FILE_DESCRIPTOR 1024        /* Max file discriptor count for each thread */
 
 /* A kernel thread or user process.
 
@@ -82,6 +87,36 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+
+struct process_status
+{
+  /* tid of the curresponing process */
+  tid_t tid;
+  
+  int exit_code;
+  
+  /* wait sema
+   * init to 0
+   * used for handling wait between parent and child thread
+   */
+  struct semaphore ws; 
+  
+  /* initially 2
+   * used for freeing resources 
+   * number of alive threads referencing to this status  
+   */
+  int rc;
+  
+  /* strictly for changing value of rc */
+  struct lock rc_lock;
+  
+  /* If parent already waited on this child once!  */
+  bool already_waited;
+
+  struct list_elem children_elem;
+};
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -98,6 +133,12 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* status of process running by this thread */
+    struct process_status *ps;
+
+    /* list of all the child threads */
+    struct list children_status;
 #endif
 
     /* Owned by thread.c. */
