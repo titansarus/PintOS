@@ -162,7 +162,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void thread_rename (struct thread* , const char*);
-struct thread* find_thread_by_id(tid);
+struct thread* find_thread_by_id(tid_t);
 
 
 #endif /* threads/thread.h */

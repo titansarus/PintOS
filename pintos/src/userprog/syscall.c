@@ -20,7 +20,8 @@ validate_arg (void *arg)
   return arg != NULL && is_user_vaddr (ptr) && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
 }
 
-bool is_valid_string (char *ustr) {
+static bool
+is_valid_string (char *ustr) {
     char *kstr = pagedir_get_page (thread_current ()->pagedir, ustr);
     return kstr != NULL && validate_arg (ustr + strlen (kstr) + 1);
 }
@@ -101,7 +102,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
   else if (args[0] == SYS_EXEC)
     {
-      if (!is_valid_string (args[1]))
+      if (!is_valid_string ((char*) args[1]))
         {
           f->eax = -1;
           printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
