@@ -104,7 +104,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           exit (-1);
         }
       else
-        f->eax = filesys_create ((char *) args[1], args[2]);
+        {
+          lock_acquire(&fs_lock);
+          f->eax = filesys_create ((char *) args[1], args[2]);
+          lock_release(&fs_lock);
+        }
     }
   else if (args[0] == SYS_REMOVE)
     {
@@ -114,7 +118,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           exit (-1);
         }
       else
-        f->eax = filesys_remove ((char *) args[1]);
+        {
+          lock_acquire(&fs_lock);
+          f->eax = filesys_remove ((char *) args[1]);
+          lock_release(&fs_lock);
+        }
     }
   else if (args[0] == SYS_OPEN)
     {
@@ -124,7 +132,9 @@ syscall_handler (struct intr_frame *f UNUSED)
           exit (-1);
         }
       else {
+        lock_acquire(&fs_lock);
         struct file* file_ = filesys_open((char*) args[1]);
+        lock_release(&fs_lock);
         if (file_ == NULL)
           f->eax = -1;
         else
@@ -145,7 +155,9 @@ syscall_handler (struct intr_frame *f UNUSED)
               f->eax = -1;
           else
             {
+              lock_acquire(&fs_lock);
               file_close (fd->file);
+              lock_release(&fs_lock);
               list_remove (&fd->fd_elem);
               free (fd);
               f->eax = 0;
@@ -165,7 +177,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           if (fd == NULL)
             f->eax = -1;
           else
-            f->eax = file_length (fd->file);
+            {
+              lock_acquire(&fs_lock);
+              f->eax = file_length (fd->file);
+              lock_release(&fs_lock);
+            }
         }
     }
   else if (args[0] == SYS_WRITE)
@@ -262,7 +278,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           unsigned position = args[2];
           struct file_descriptor *fd = get_file_descriptor (fid);
           if (fd != NULL)
+            {
+              lock_acquire(&fs_lock);
               file_seek (fd->file, position);
+              lock_release(&fs_lock);
+            }
         }
     }
   else if (args[0] == SYS_TELL)
@@ -280,7 +300,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           if (fd == NULL)
               f->eax = -1;
           else
+            {
+              lock_acquire(&fs_lock);
               f->eax = file_tell (fd->file);
+              lock_release(&fs_lock);              
+            }
         }
     }
   else if (args[0] == SYS_HALT)
