@@ -1,6 +1,6 @@
 # GROUP 3 Project
 
-**Phase 1 (syscalls) and phase 3 (file system) are in the `master` branch, while phase 2 (scheduling) is in the [GHW2](https://github.com/titansarus/PintOS/tree/GHW2) branch.**
+**Phase 1 (Syscalls and User Programs) and Phase 3 (File System) are in the `main` branch, while Phase 2 (Scheduling) is in the [GHW2](https://github.com/titansarus/PintOS/tree/GHW2) branch.**
 
 ### teammates
 	ArshiA		Akhavan
